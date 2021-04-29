@@ -1,0 +1,99 @@
+Transform: ['AWS::Serverless-2016-10-31', VcisCommonTagsMacro]
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - non-prod
+      - prod
+    ConstraintDescription: Must be either non-prod or prod
+  Timeout:
+    Description: "Timeout [s]"
+    Type: Number
+    Default: 900
+  MemorySize:
+    Description: "Memory Size [MB]"
+    Type: Number
+    Default: 128
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+
+Resources:
+  ApiGatewayCustomDomainCreatorDeadLetterSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 60
+
+  ApiGatewayCustomDomainCreatorFunction:
+    DependsOn:
+      - ApiGatewayCustomDomainCreatorDeadLetterSQS
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs10.x
+      CodeUri: crud/
+      Timeout:
+        Ref: Timeout
+      MemorySize:
+        Ref: MemorySize
+      DeadLetterQueue:
+        TargetArn: !GetAtt [ApiGatewayCustomDomainCreatorDeadLetterSQS, Arn]
+        Type: SQS
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - apigateway:PATCH
+              - apigateway:GET
+              - apigateway:POST
+            Resource:
+              - !Sub 'arn:aws:apigateway:${AWS::Region}::/*'
+          - Effect: Allow
+            Action:
+              - apigateway:DELETE
+            Resource:
+              - !Sub 'arn:aws:apigateway:${AWS::Region}::/domainnames/*'
+          - Effect: Allow
+            Action:
+              - cloudfront:UpdateDistribution
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - sqs:SendMessage
+            Resource:
+              - !GetAtt [ApiGatewayCustomDomainCreatorDeadLetterSQS, Arn]
+
+  ApiGatewayCustomDomainDeadLetterFunction:
+    DependsOn:
+      - ApiGatewayCustomDomainCreatorDeadLetterSQS
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs10.x
+      CodeUri: deadletter/
+      Timeout: 60
+      MemorySize:
+        Ref: MemorySize
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt [ApiGatewayCustomDomainCreatorDeadLetterSQS, Arn]
+            BatchSize: 10
+            Enabled: true
+                    
+Outputs:
+  ApiGatewayCustomDomainCreatorCustomResource:
+    Description: "Api Gateway Custom Domain For CF Custom Resource"
+    Value: !GetAtt ApiGatewayCustomDomainCreatorFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiGatewayCustomDomainCreatorFunctionArn"

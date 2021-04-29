@@ -1,0 +1,205 @@
+Transform: [VcisCommonTagsMacro]
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+  KMS:
+      Description: "SSM Parameter Name containing KMS Arn for decrypting keys"
+      Type: AWS::SSM::Parameter::Value<String>
+  ProjectModuleTag:
+      Type: AWS::SSM::Parameter::Value<String>
+      Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+  PodRolFixVolumeBulkSQSName:
+    Type: String
+    Description: PodRolFixVolumeBulkSQSName description
+  PodRolFixedVolumeUpdaterSQSName:
+    Type: String
+    Description: PodRolFixedVolumeUpdaterSQSName description
+  PodFixedVolumeUpdatedTopicSNSName:
+    Type: String
+    Description: PodFixedVolumeUpdatedTopicSNSName description
+
+Resources:
+  ### Queues
+  PodRolFixVolumeBulkSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 3
+      KmsDataKeyReusePeriodSeconds: 300
+      KmsMasterKeyId: !Ref KMS
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 30
+      QueueName: !Join
+        - ''
+        - - !Ref PodRolFixVolumeBulkSQSName
+          - '-'
+          - !Ref Env
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PodRolFixVolumeBulkSQSError.Arn
+        maxReceiveCount: 5
+
+  PodRolFixVolumeBulkSQSError:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 3
+      KmsDataKeyReusePeriodSeconds: 300
+      KmsMasterKeyId: !Ref KMS
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 30
+      QueueName: !Join
+        - ''
+        - - !Ref PodRolFixVolumeBulkSQSName
+          - '-error-'
+          - !Ref Env
+
+  PodRolFixVolumeBulkSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt PodRolFixVolumeBulkSQS.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt PodRolFixVolumeBulkSQS.Arn
+      Queues:
+        - !Ref PodRolFixVolumeBulkSQS
+    DependsOn:
+      - PodRolFixVolumeBulkSQS
+
+  PodRolFixedVolumeUpdaterSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 30
+      QueueName: !Join
+        - ''
+        - - !Ref PodRolFixedVolumeUpdaterSQSName
+          - '-'
+          - !Ref Env
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PodRolFixedVolumeUpdaterSQSError.Arn
+        maxReceiveCount: 5
+
+  PodRolFixedVolumeUpdaterSQSError:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 30
+      QueueName: !Join
+        - ''
+        - - !Ref PodRolFixedVolumeUpdaterSQSName
+          - '-error-'
+          - !Ref Env
+
+  PodRolFixedVolumeUpdaterSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt PodRolFixedVolumeUpdaterSQS.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt PodRolFixedVolumeUpdaterSQS.Arn
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt PodRolFixedVolumeUpdaterSQS.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn:
+                  - !Sub 'arn:aws:sns:us-east-1:578248469025:vcis-app-pod-rol-updated-topic-${Env}'
+      Queues:
+        - !Ref PodRolFixedVolumeUpdaterSQS
+    DependsOn:
+      - PodRolFixedVolumeUpdaterSQS
+
+
+  ### SNS Topics
+  PodFixedVolumeUpdatedTopicSNS:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: ''
+      TopicName: !Join
+        - ''
+        - - !Ref PodFixedVolumeUpdatedTopicSNSName
+          - '-'
+          - !Ref Env
+      Subscription:
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-pod-rol-fixed-volume-updater-${Env}"
+          Protocol: sqs
+
+  PodFixedVolumeUpdatedTopicSNSPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2008-10-17"
+        Id: "__default_policy_ID"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - SNS:GetTopicAttributes
+              - SNS:SetTopicAttributes
+              - SNS:AddPermission
+              - SNS:RemovePermission
+              - SNS:DeleteTopic
+              - SNS:Subscribe
+              - SNS:ListSubscriptionsByTopic
+              - SNS:Publish
+              - SNS:Receive
+            Resource: !Join
+              - ''
+              - - !Ref PodFixedVolumeUpdatedTopicSNS
+                - '-'
+                - !Ref Env
+            Condition:
+              StringEquals:
+                AWS:SourceOwner: 578248469025
+      Topics:
+        - Ref: PodFixedVolumeUpdatedTopicSNS
+    DependsOn:
+      - PodFixedVolumeUpdatedTopicSNS
+
+Outputs:
+  PodRolFixVolumeBulkSQSOutput:
+    Description: "PodRolFixVolumeBulkSQS"
+    Value: !GetAtt PodRolFixVolumeBulkSQS.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-PodRolFixVolumeBulkSQS'
+  PodRolFixedVolumeUpdaterSQSOutput:
+    Description: "PodRolFixedVolumeUpdaterSQS"
+    Value: !GetAtt PodRolFixedVolumeUpdaterSQS.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-PodRolFixedVolumeUpdaterSQS'
+  PodFixedVolumeUpdatedTopicSNSOutput:
+    Description: "PodFixedVolumeUpdatedTopicSNS"
+    Value: !Ref PodFixedVolumeUpdatedTopicSNS
+    Export:
+      Name: !Sub '${AWS::StackName}-PodFixedVolumeUpdatedTopicSNS'

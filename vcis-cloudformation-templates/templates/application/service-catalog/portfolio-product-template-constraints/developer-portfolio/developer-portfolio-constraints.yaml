@@ -1,0 +1,441 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  AWS CloudFormation Template For Service Catalog Portfolio Constraints
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Description: 'Environment in which resources should be deployed'
+    Type: String
+    AllowedValues:
+      - non-prod
+      - prod
+    ConstraintDescription: Must be either non-prod or prod
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  DeveloperProductsPortfolioStackName:
+    Description: Stack Name export Developer Products Portfolio details
+    Type: String
+
+  SAMCiCdPipelineProductStackName:
+    Description: Stack Name exporting SAM CI-CD Pipeline Service Catalog Product
+    Type: String
+
+  AppInfraCiCdPipelineProductStackName:
+    Description: Stack Name exporting Application Infrastructure CI-CD Pipeline Service Catalog Product
+    Type: String
+
+  UiCiCdPipelineProductStackName:
+    Description: Stack Name exporting UI CI-CD Pipeline Service Catalog Product
+    Type: String
+
+Resources:
+
+#  Launch Template Constraints for SAMCiCdPipelineProduct
+  SAMCiCdPipelineProductEnvParamValidationTemplateConstraint:
+    Type: AWS::ServiceCatalog::LaunchTemplateConstraint
+    Properties:
+      Description: 'Validate Environment values based on Account Type'
+      PortfolioId:
+        Fn::ImportValue: !Sub '${DeveloperProductsPortfolioStackName}-DeveloperProductsPortfolioId'
+      ProductId:
+        Fn::ImportValue: !Sub '${SAMCiCdPipelineProductStackName}-SAMCiCdPipelineProductId'
+      Rules: '{
+                  "AllowedEnvironmentsForNonProdAccount": {
+                    "RuleCondition": {
+                      "Fn::Equals": [
+                        {
+                          "Ref": "AWS::AccountId"
+                        },
+                        "578248469025"
+                      ]
+                    },
+                    "Assertions": [
+                      {
+                        "Assert": {
+                          "Fn::Contains": [
+                            [
+                              "dev",
+                              "it"
+                            ],
+                            {
+                              "Ref": "Env"
+                            }
+                          ]
+                        },
+                        "AssertDescription": "Env should be either dev or it for NonProd Account"
+                      }
+                    ]
+                  },
+                  "AllowedEnvironmentsForProdAccount": {
+                    "RuleCondition": {
+                      "Fn::Equals": [
+                        {
+                          "Ref":  "AWS::AccountId"
+                        },
+                        "820712698669"
+                      ]
+                    },
+                    "Assertions": [
+                      {
+                        "Assert": {
+                          "Fn::Contains": [
+                            [
+                              "prod"
+                            ],
+                            {
+                              "Ref" : "Env"
+                            }
+                          ]
+                        },
+                        "AssertDescription": "Env should be Prod for Prod Account"
+                      }
+                    ]
+                  }
+                }'
+
+  SAMCiCdPipelineProductImportedStackNameValidationTemplateConstraint:
+    Type: AWS::ServiceCatalog::LaunchTemplateConstraint
+    Properties:
+      Description: 'Validate Imported Stack Name Values based on selected Environment'
+      PortfolioId:
+        Fn::ImportValue: !Sub '${DeveloperProductsPortfolioStackName}-DeveloperProductsPortfolioId'
+      ProductId:
+        Fn::ImportValue: !Sub '${SAMCiCdPipelineProductStackName}-SAMCiCdPipelineProductId'
+      Rules: '{
+                    "ValidateNonProdAccountValues": {
+                        "RuleCondition": {
+                            "Fn::Contains": [
+                                [
+                                    "dev",
+                                    "it"
+                                ],
+                                {
+                                    "Ref": "Env"
+                                }
+                            ]
+                        },
+                        "Assertions": [{
+                                "Assert": {
+                                    "Fn::Equals": [{
+                                            "Ref": "AppAccountLevelResourcesStackName"
+                                        },
+                                        "vcis-app-non-prod-account-level-resources"
+                                    ]
+                                },
+                                "AssertDescription": "Non-Prod App Account Level Resources Stack Name should be provided (vcis-app-non-prod-account-level-resources)"
+                            },
+                            {
+                                "Assert": {
+                                    "Fn::Equals": [{
+                                            "Ref": "ApprovalNotificationsStackName"
+                                        },
+                                        ""
+                                    ]
+                                },
+                                "AssertDescription": "Release Approval Notifications Stack Name should be empty for Non-Prod Account"
+                            }
+                        ]
+                    },
+                    "ValidateProdAccountValues": {
+                        "RuleCondition": {
+                            "Fn::Contains": [
+                                [
+                                    "prod"
+                                ],
+                                {
+                                    "Ref": "Env"
+                                }
+                            ]
+                        },
+                        "Assertions": [{
+                                "Assert": {
+                                    "Fn::Equals": [{
+                                            "Ref": "AppAccountLevelResourcesStackName"
+                                        },
+                                        "vcis-app-prod-account-level-resources"
+                                    ]
+                                },
+                                "AssertDescription": "Prod App Account Level Resources Stack Name should be provided (vcis-app-prod-account-level-resources)"
+                            },
+                            {
+                                "Assert": {
+                                    "Fn::Equals": [{
+                                            "Ref": "ApprovalNotificationsStackName"
+                                        },
+                                        "vcis-prod-app-approvals-slack-notifier"
+                                    ]
+                                },
+                                "AssertDescription": "Release Approval Notifications Stack Name for Prod Account should be provided (vcis-prod-app-approvals-slack-notifier)"
+                            }
+                        ]
+                    }
+                }'
+
+  #  Launch Template Constraints for AppInfraCiCdPipelineProduct
+  AppInfraCiCdPipelineProductEnvParamValidationTemplateConstraint:
+    Type: AWS::ServiceCatalog::LaunchTemplateConstraint
+    Properties:
+      Description: 'Validate Environment values based on Account Type'
+      PortfolioId:
+        Fn::ImportValue: !Sub '${DeveloperProductsPortfolioStackName}-DeveloperProductsPortfolioId'
+      ProductId:
+        Fn::ImportValue: !Sub '${AppInfraCiCdPipelineProductStackName}-AppInfraCiCdPipelineProductId'
+      Rules: '{
+                  "AllowedEnvironmentsForNonProdAccount": {
+                    "RuleCondition": {
+                      "Fn::Equals": [
+                        {
+                          "Ref": "AWS::AccountId"
+                        },
+                        "578248469025"
+                      ]
+                    },
+                    "Assertions": [
+                      {
+                        "Assert": {
+                          "Fn::Contains": [
+                            [
+                              "dev",
+                              "it"
+                            ],
+                            {
+                              "Ref": "Env"
+                            }
+                          ]
+                        },
+                        "AssertDescription": "Env should be either dev or it for NonProd Account"
+                      }
+                    ]
+                  },
+                  "AllowedEnvironmentsForProdAccount": {
+                    "RuleCondition": {
+                      "Fn::Equals": [
+                        {
+                          "Ref":  "AWS::AccountId"
+                        },
+                        "820712698669"
+                      ]
+                    },
+                    "Assertions": [
+                      {
+                        "Assert": {
+                          "Fn::Contains": [
+                            [
+                              "prod"
+                            ],
+                            {
+                              "Ref" : "Env"
+                            }
+                          ]
+                        },
+                        "AssertDescription": "Env should be Prod for Prod Account"
+                      }
+                    ]
+                  }
+                }'
+
+  AppInfraCiCdPipelineProductImportedStackNameValidationTemplateConstraint:
+    Type: AWS::ServiceCatalog::LaunchTemplateConstraint
+    Properties:
+      Description: 'Validate Imported Stack Name Values based on selected Environment'
+      PortfolioId:
+        Fn::ImportValue: !Sub '${DeveloperProductsPortfolioStackName}-DeveloperProductsPortfolioId'
+      ProductId:
+        Fn::ImportValue: !Sub '${AppInfraCiCdPipelineProductStackName}-AppInfraCiCdPipelineProductId'
+      Rules: '{
+                    "ValidateNonProdAccountValues": {
+                        "RuleCondition": {
+                            "Fn::Contains": [
+                                [
+                                    "dev",
+                                    "it"
+                                ],
+                                {
+                                    "Ref": "Env"
+                                }
+                            ]
+                        },
+                        "Assertions": [{
+                                "Assert": {
+                                    "Fn::Equals": [{
+                                            "Ref": "AppAccountLevelResourcesStackName"
+                                        },
+                                        "vcis-app-non-prod-account-level-resources"
+                                    ]
+                                },
+                                "AssertDescription": "Non-Prod App Account Level Resources Stack Name should be provided (vcis-app-non-prod-account-level-resources)"
+                            }
+                        ]
+                    },
+                    "ValidateProdAccountValues": {
+                        "RuleCondition": {
+                            "Fn::Contains": [
+                                [
+                                    "prod"
+                                ],
+                                {
+                                    "Ref": "Env"
+                                }
+                            ]
+                        },
+                        "Assertions": [{
+                                "Assert": {
+                                    "Fn::Equals": [{
+                                            "Ref": "AppAccountLevelResourcesStackName"
+                                        },
+                                        "vcis-app-prod-account-level-resources"
+                                    ]
+                                },
+                                "AssertDescription": "Prod App Account Level Resources Stack Name should be provided (vcis-app-prod-account-level-resources)"
+                            }
+                        ]
+                    }
+                }'
+
+  #  Launch Template Constraints for UiCiCdPipelineProduct
+  UiCiCdPipelineProductEnvParamValidationTemplateConstraint:
+    Type: AWS::ServiceCatalog::LaunchTemplateConstraint
+    Properties:
+      Description: 'Validate Environment values based on Account Type'
+      PortfolioId:
+        Fn::ImportValue: !Sub '${DeveloperProductsPortfolioStackName}-DeveloperProductsPortfolioId'
+      ProductId:
+        Fn::ImportValue: !Sub '${UiCiCdPipelineProductStackName}-UiCiCdPipelineProductId'
+      Rules: '{
+                  "AllowedEnvironmentsForNonProdAccount": {
+                    "RuleCondition": {
+                      "Fn::Equals": [
+                        {
+                          "Ref": "AWS::AccountId"
+                        },
+                        "578248469025"
+                      ]
+                    },
+                    "Assertions": [
+                      {
+                        "Assert": {
+                          "Fn::Contains": [
+                            [
+                              "dev",
+                              "it"
+                            ],
+                            {
+                              "Ref": "Env"
+                            }
+                          ]
+                        },
+                        "AssertDescription": "Env should be either dev or it for NonProd Account"
+                      }
+                    ]
+                  },
+                  "AllowedEnvironmentsForProdAccount": {
+                    "RuleCondition": {
+                      "Fn::Equals": [
+                        {
+                          "Ref":  "AWS::AccountId"
+                        },
+                        "820712698669"
+                      ]
+                    },
+                    "Assertions": [
+                      {
+                        "Assert": {
+                          "Fn::Contains": [
+                            [
+                              "prod"
+                            ],
+                            {
+                              "Ref" : "Env"
+                            }
+                          ]
+                        },
+                        "AssertDescription": "Env should be Prod for Prod Account"
+                      }
+                    ]
+                  }
+                }'
+
+  UiCiCdPipelineProductImportedStackNameValidationTemplateConstraint:
+    Type: AWS::ServiceCatalog::LaunchTemplateConstraint
+    Properties:
+      Description: 'Validate Imported Stack Name Values based on selected Environment'
+      PortfolioId:
+        Fn::ImportValue: !Sub '${DeveloperProductsPortfolioStackName}-DeveloperProductsPortfolioId'
+      ProductId:
+        Fn::ImportValue: !Sub '${UiCiCdPipelineProductStackName}-UiCiCdPipelineProductId'
+      Rules: '{
+                    "ValidateNonProdAccountValues": {
+                        "RuleCondition": {
+                            "Fn::Contains": [
+                                [
+                                    "dev",
+                                    "it"
+                                ],
+                                {
+                                    "Ref": "Env"
+                                }
+                            ]
+                        },
+                        "Assertions": [{
+                                "Assert": {
+                                    "Fn::Equals": [{
+                                            "Ref": "AppAccountLevelResourcesStackName"
+                                        },
+                                        "vcis-app-non-prod-account-level-resources"
+                                    ]
+                                },
+                                "AssertDescription": "Non-Prod App Account Level Resources Stack Name should be provided (vcis-app-non-prod-account-level-resources)"
+                            },
+                            {
+                                "Assert": {
+                                    "Fn::Equals": [{
+                                            "Ref": "ApprovalNotificationsStackName"
+                                        },
+                                        ""
+                                    ]
+                                },
+                                "AssertDescription": "Release Approval Notifications Stack Name should be empty for Non-Prod Account"
+                            }
+                        ]
+                    },
+                    "ValidateProdAccountValues": {
+                        "RuleCondition": {
+                            "Fn::Contains": [
+                                [
+                                    "prod"
+                                ],
+                                {
+                                    "Ref": "Env"
+                                }
+                            ]
+                        },
+                        "Assertions": [{
+                                "Assert": {
+                                    "Fn::Equals": [{
+                                            "Ref": "AppAccountLevelResourcesStackName"
+                                        },
+                                        "vcis-app-prod-account-level-resources"
+                                    ]
+                                },
+                                "AssertDescription": "Prod App Account Level Resources Stack Name should be provided (vcis-app-prod-account-level-resources)"
+                            },
+                            {
+                                "Assert": {
+                                    "Fn::Equals": [{
+                                            "Ref": "ApprovalNotificationsStackName"
+                                        },
+                                        "vcis-prod-app-approvals-slack-notifier"
+                                    ]
+                                },
+                                "AssertDescription": "Release Approval Notifications Stack Name for Prod Account should be provided (vcis-prod-app-approvals-slack-notifier)"
+                            }
+                        ]
+                    }
+                }'
+

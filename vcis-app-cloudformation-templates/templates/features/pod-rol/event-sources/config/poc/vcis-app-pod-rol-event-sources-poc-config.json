@@ -1,0 +1,10 @@
+{
+  "Parameters": {
+    "Env": "poc",
+    "ProjectModuleTag": "/vcis/poc/infra/tags/project-module-pod",
+    "KMS": "/vcis/poc/app/kms/sharedAccount",
+    "CustomTags": "Key=mon:feature,Value=pod-rol,Key=mon:team,Value=stark,Key=mon:application,Value=Industry System,Key=mon:module,Value=IS",
+    "PodRolAdjustedTopicSNSName": "vcis-app-pod-rol-adjusted-topic",
+    "PodRolUpdatedTopicSNSName": "vcis-app-pod-rol-updated-topic"
+  }
+}

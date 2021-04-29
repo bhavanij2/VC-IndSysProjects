@@ -1,0 +1,430 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: CloudFormation template to create Amazon Postgres
+
+# Transformation macro for tagging
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Description: 'Deployment Environment'
+    Type: String
+    AllowedValues:
+      - 'dev'
+      - 'it'
+      - 'prod'
+    ConstraintDescription: 'Must be either dev, it or prod.'
+
+  # SSM parameter for Project Module tag
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  VPCStackName:
+    Type: String
+    Description: The VPC stack name
+
+  DBInstanceClass:
+    Type: String
+    Description: RDS Database Instance Type
+    AllowedValues:
+      - db.m4.large
+      - db.m4.xlarge
+      - db.m4.2xlarge
+      - db.m4.4xlarge
+      - db.m4.10xlarge
+      - db.r3.large
+      - db.r3.xlarge
+      - db.r3.2xlarge
+      - db.r3.4xlarge
+      - db.r3.8xlarge
+      - db.t2.large
+      - db.t2.medium
+      - db.t2.small
+    Default: db.t2.small
+  
+  MultiAZ:
+    Type: String
+    Description: >-
+      Create a standby replica of your DB instance in another Availability Zone
+      for failover support.
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  
+  StorageType:
+    Type: String
+    Description: Select the storage type you want to use.
+    Default: gp2
+    AllowedValues:
+      - standard
+      - gp2
+      - iol
+  
+  PGVersion:
+    Type: String
+    Description: Select the Postgres DB version you need
+    Default: 10.11
+    AllowedValues:
+      - '10.11'
+      - '10.6'
+      - '10.5'
+      - '10.4'
+      - '10.3'
+      - '10.1'
+  
+  AllocatedStorage:
+    Type: Number
+    Default: '5'
+    Description: Type a value to allocate storage for your database in GB. 5 GB min.
+  
+  KmsKey:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Specify the ARN of KMS key.
+  
+  PubliclyAccessible:
+    Type: String
+    Description: >-
+      True is NOT really publicly accessible. True allows access outside the
+      cloudfoundry VPC, but still secure. True is needed to connect via bastion
+      to upload data.
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+  
+  AllowMajorVersionUpgrade:
+    Type: String
+    Description: >-
+      Indicates whether major version upgrades are allowed. Changing this
+      parameter does not result in an outage, and the change is applied
+      asynchronously as soon as possible.
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+  
+  AutoMinorVersionUpgrade:
+    Type: String
+    Description: >-
+      Enable your DB instance to receive minor DB engine version upgrades
+      automatically when they become available.
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'true'
+  
+  AWSBackupRetentionPeriod:
+    Type: String
+    Default: '90'
+    AllowedValues:
+      - '90'
+      - '120'
+    Description: >-
+      Set the number of days (90 or 120) you want AWS Backup retain your backup.
+  
+  PreferredMaintenanceWindow:
+    Type: String
+    Description: >-
+      30 minute window in which pending modifications to your DB instance are
+      applied.
+    Default: 'sun:05:01-sun:05:31'
+  
+  DBInstanceIdentifier:
+    Description: >-
+      Not the Database name. A DB instance identifier that is unique for your
+      account in the region you selected. Letter and number characters or
+      hyphens only. First character must be a letter. Cannot end with a hyphen
+      or contain two consecutive hyphens. Must be unique for all DB instances
+      per AWS account, per region.
+    MaxLength: '63'
+    AllowedPattern: '[a-zA-Z0-9\-]*'
+    Type: String
+  
+  MasterUsername:
+    Type: String
+    MaxLength: '63'
+    AllowedPattern: '[a-zA-Z0-9]*(?i)(?!admin\b)\b\w+'
+    Description: >-
+      Do not use "Admin". Use letter and number characters only. Use as the
+      master user name to log on to your DB instance. Do not use reserved words:
+      http://www.postgresql.org/docs/current/static/sql-keywords-appendix.html
+  
+  MasterUserPassword:
+    Type: String
+    Description: >-
+      Password that contains from 14 to 128 printable ASCII characters excluding
+      /,", and @.
+    MaxLength: '128'
+    MinLength: '14'
+    AllowedPattern: '[a-zA-Z0-9`~!#$%^&*\(\)\[\]\{\}\-_=+?.,<>\|'':;]*'
+    NoEcho: true
+  
+  DBName:
+    Type: String
+    Description: >-
+      Name of the database. Up to 63 characters. Letters, numbers, and
+      underscore only. Do not use "default", "template", or other reserved
+      words:
+      http://www.postgresql.org/docs/current/static/sql-keywords-appendix.html
+    AllowedPattern: '[a-zA-Z0-9_]*(?i)(?!default\b|template\b)\b\w+'
+    MaxLength: '63'
+  
+  DBSnapshotName:
+    Description: >-
+      Optional - The ARN of an existing DB snapshot to create this DB from (Ex.
+      arn:aws:rds:us-east-1:285453578300:snapshot:rds:mydb-snapshot).  If you
+      specify this the following parameters are ignored: dbname, masterusername,
+      masteruserpassword
+    Default: ''
+    Type: String
+
+  NotificationStackName:
+    Description: >-
+        The name of the stack that is exporting the Slack Notifier SNS Topic
+    Type: 'String'
+
+Conditions:
+  UseDBSnapshot: !Not 
+    - !Equals 
+      - !Ref DBSnapshotName
+      - ''
+
+Mappings:
+  ParameterGroupMap:
+    '10.11':
+      PGROUP: default.postgres10
+    '10.6':
+      PGROUP: default.postgres10
+    '10.5':
+      PGROUP: default.postgres10
+    '10.4':
+      PGROUP: default.postgres10
+    '10.3':
+      PGROUP: default.postgres10
+    '10.1':
+      PGROUP: default.postgres10
+
+Resources:
+
+  RdsSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties: 
+      DBSubnetGroupDescription: Rds Aurora RDS Subnet Group
+      SubnetIds: 
+        - Fn::ImportValue: !Sub "${VPCStackName}-RdsSubnet1"
+        - Fn::ImportValue: !Sub "${VPCStackName}-RdsSubnet2"
+
+
+  # RDS Instance
+  newdb:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      Engine: postgres
+      EngineVersion: !Ref PGVersion
+      LicenseModel: postgresql-license
+      DBSnapshotIdentifier: !If 
+        - UseDBSnapshot
+        - !Ref DBSnapshotName
+        - !Ref 'AWS::NoValue'
+      DBParameterGroupName: !FindInMap 
+        - ParameterGroupMap
+        - !Ref PGVersion
+        - PGROUP
+      DBInstanceClass: !Ref DBInstanceClass
+      MultiAZ: !Ref MultiAZ
+      StorageType: !Ref StorageType
+      AllocatedStorage: !Ref AllocatedStorage
+      DBInstanceIdentifier: !Ref DBInstanceIdentifier
+      MasterUsername: !Ref MasterUsername
+      MasterUserPassword: !Ref MasterUserPassword
+      DBSubnetGroupName: !Ref RdsSubnetGroup
+      PubliclyAccessible: !Ref PubliclyAccessible
+      VPCSecurityGroups:
+        - Fn::ImportValue: !Sub "${VPCStackName}-VcisRdsSecurityGroup"
+      DBName: !If 
+        - UseDBSnapshot
+        - !Ref 'AWS::NoValue'
+        - !Ref DBName
+      Port: '5432'
+      StorageEncrypted: 'true'
+      KmsKeyId: !If 
+        - UseDBSnapshot
+        - !Ref 'AWS::NoValue'
+        - !Ref KmsKey
+      AllowMajorVersionUpgrade: !Ref AllowMajorVersionUpgrade
+      AutoMinorVersionUpgrade: !Ref AutoMinorVersionUpgrade
+      PreferredMaintenanceWindow: !Ref PreferredMaintenanceWindow
+      CopyTagsToSnapshot: 'true'
+      BackupRetentionPeriod: 0
+      Tags:
+        - Key: mon:backup-plan
+          Value: !Sub 'rds-retain-${AWSBackupRetentionPeriod}'
+
+  DatabasePrimaryCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "Primary database CPU utilization is over 80%."
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${NotificationStackName}-SNSTopicArn"
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref newdb
+      EvaluationPeriods: 2
+      MetricName: CPUUtilization
+      Namespace: AWS/RDS
+      Period: 300
+      Statistic: Average
+      Threshold: 80
+      Unit: Percent
+
+  DatabaseConnectionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "The number of database connections in use"
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${NotificationStackName}-SNSTopicArn"
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref newdb
+      EvaluationPeriods: 2
+      MetricName: DatabaseConnections
+      Namespace: AWS/RDS
+      Period: 300
+      Statistic: Average
+      Threshold: 0.75
+      Unit: Percent
+
+  FreeStorageSpaceAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "The amount of available storage space"
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${NotificationStackName}-SNSTopicArn"
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref newdb
+      EvaluationPeriods: 2
+      MetricName: FreeStorageSpace
+      Namespace: AWS/RDS
+      Period: 300
+      Statistic: Average
+      Threshold: 0.15
+      Unit: Percent
+
+  DatabaseMemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${NotificationStackName}-SNSTopicArn"
+      AlarmDescription: "Database freeable memory is under 700MB."
+      ComparisonOperator: LessThanOrEqualToThreshold
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref newdb
+      EvaluationPeriods: 2
+      MetricName: FreeableMemory
+      Namespace: AWS/RDS
+      Period: 300
+      Statistic: Average
+      Threshold: 700000000
+      Unit: Bytes
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Instance Specifications
+        Parameters:
+          - PGVersion
+          - DBInstanceClass
+          - MultiAZ
+          - StorageType
+          - AllocatedStorage
+      - Label:
+          default: Settings
+        Parameters:
+          - DBSnapshotName
+          - DBInstanceIdentifier
+          - MasterUsername
+          - MasterUserPassword
+          - KmsKey
+      - Label:
+          default: Network & Security
+        Parameters:
+          - Environment
+          - PubliclyAccessible
+      - Label:
+          default: Database Options
+        Parameters:
+          - DBName
+      - Label:
+          default: Backup
+        Parameters:
+          - AWSBackupRetentionPeriod
+      - Label:
+          default: Maintenance
+        Parameters:
+          - AllowMajorVersionUpgrade
+          - AutoMinorVersionUpgrade
+          - PreferredMaintenanceWindow
+    ParameterLabels:
+      DBInstanceClass:
+        default: DB Instance Class
+      MultiAZ:
+        default: Multi-Availability Zone Deployment
+      StorageType:
+        default: Storage Type
+      AllocatedStorage:
+        default: Allocated Storage
+      DBInstanceIdentifier:
+        default: DB Instance Identifier
+      MasterUsername:
+        default: DB Master Username
+      MasterUserPassword:
+        default: DB Master Password
+      Environment:
+        default: AWS Deployment Environment
+      PubliclyAccessible:
+        default: Publicly Accessible
+      DBName:
+        default: Database Name
+      AWSBackupRetentionPeriod:
+        default: AWS Backup Retentions Period
+      AllowMajorVersionUpgrade:
+        default: Allow Major Version Upgrade
+      AutoMinorVersionUpgrade:
+        default: Auto Minor Version Upgrade
+      PreferredMaintenanceWindow:
+        default: Preferred Maintencance Window
+      DataClassification:
+        default: DataClassificationTag
+Outputs:
+  DatabaseInstanceIdentifierOutput:
+    Description: Database Instance Identifier
+    Value: !Ref newdb
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseInstanceIdentifier'
+  DatabaseMemoryAlarmOutput:
+    Description: DatabaseMemoryAlarm's arn
+    Value: !GetAtt DatabaseMemoryAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseMemoryAlarm'      
+  DatabasePrimaryCPUAlarmOutput:
+    Description: DatabasePrimaryCPUAlarm's arn
+    Value: !GetAtt DatabasePrimaryCPUAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabasePrimaryCPUAlarm'
+  DatabaseConnectionsAlarmOutput:
+    Description: DatabaseConnectionsAlarm's arn
+    Value: !GetAtt DatabaseConnectionsAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseConnectionsAlarm'
+  FreeStorageSpaceAlarmOutput:
+    Description: FreeStorageSpaceAlarm's arn
+    Value: !GetAtt FreeStorageSpaceAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-FreeStorageSpaceAlarm'

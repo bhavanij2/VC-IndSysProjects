@@ -1,0 +1,5 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var vcis_iam_roles_cdk_stack_1 = require("./vcis-iam-roles-cdk-stack");
+exports.VcisIamRolesCdkStack = vcis_iam_roles_cdk_stack_1.VcisIamRolesCdkStack;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOztBQUFBLHVFQUFnRTtBQUF4RCwwREFBQSxvQkFBb0IsQ0FBQSIsInNvdXJjZXNDb250ZW50IjpbImV4cG9ydCB7VmNpc0lhbVJvbGVzQ2RrU3RhY2t9IGZyb20gJy4vdmNpcy1pYW0tcm9sZXMtY2RrLXN0YWNrJztcblxuIl19

@@ -1,0 +1,150 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: ['AWS::Serverless-2016-10-31', VcisCommonTagsMacro]
+Description: >
+  vcis-pipeline-manager
+
+  Sample SAM Template for vcis-pipeline-manager
+
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - non-prod
+      - prod
+    ConstraintDescription: Must be either non-prod or prod
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+
+  AccountLevelResourcesStackName:
+    Description: Stack that export the custom domain  
+    Type: String
+
+  VcisServiceCatalogDeveloperPorfolioStackName:
+    Type: String
+    Description: Name of the CF stack where SAM CICD Pipeline product has been created
+
+  VcisServiceCatalogAppSamCiCdPipelineProductStackName:
+    Type: String
+    Description: Name of the CF stack where SAM CICD Pipeline product has been created
+
+  VcisServiceCatalogAppInfraCiCdPipelineProductStackName:
+    Type: String
+    Description: Name of the CF stack where Infra CICD Pipeline product has been created
+  
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 60
+    Runtime: nodejs10.x
+    PermissionsBoundary:
+      Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/standard-permissions-boundary
+
+
+Resources:
+
+  PipelineManagerFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: PipelineManager/
+      Handler: index.handler
+      Environment:
+        Variables:
+          Env: !Ref Env
+          VcisAppSamCiCdPipelineServiceCatalogProduct: 
+            Fn::ImportValue: !Sub "${VcisServiceCatalogAppSamCiCdPipelineProductStackName}-SAMCiCdPipelineProductId"
+          #VcisAppInfraCiCdPipelineServiceCatalogProduct:
+          #  Fn::ImportValue: !Sub "${VcisServiceCatalogAppInfraCiCdPipelineProductStackName}-InfraPipelineProductId"
+      Policies:
+        - AWSServiceCatalogEndUserFullAccess
+        - Statement:
+            - Action: 
+                - cloudformation:*
+              Effect: Allow
+              Resource:
+                - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:*/vcis-app-*'
+                - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:*/Vcis-app-*'
+            - Action:
+                - servicecatalog:DescribeProvisioningArtifact
+              Effect: Allow
+              Resource: '*'
+            - Action:
+                - s3:Get*
+              Effect: Allow
+              Resource: !Sub 'arn:aws:s3:::vcis-*'
+            - Action:
+                - ssm:Get*
+                - ssm:Describe*
+                - ssm:List*
+              Effect: Allow
+              Resource:
+                - '*'
+            - Action:
+                - cloudformation:CreateChangeSet
+              Effect: Allow
+              Resource:
+                - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:*/vcis*'
+                - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:*/Vcis*'
+            - Sid: LambdaFunctionPermission
+              Action:
+                - lambda:*
+              Effect: Allow
+              Resource:
+                - !Sub 'arn:aws:lambda:*:${AWS::AccountId}:function:*VcisCommonTags*'
+
+          Version: "2012-10-17"
+      Events:
+        LambdaPipeline:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /pipeline/{pipelineType}
+            Method: post
+
+  MigrationApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    DependsOn: PipelineManagerFunction
+    Properties:
+      BasePath: vcis-pipeline-manager
+      DomainName: 
+        Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-ApiGatewayCustomDomain"
+      RestApiId: !Ref ServerlessRestApi
+      Stage: !Ref ServerlessRestApi.Stage
+
+  # Associate Role which can provision SAMCiCdPipelineProduct
+  PipelineManagerRoleToPortfolioAssociation:
+    Type: AWS::ServiceCatalog::PortfolioPrincipalAssociation
+    DependsOn:
+      PipelineManagerFunctionRole
+    Properties:
+      PortfolioId:
+        Fn::ImportValue: !Sub '${VcisServiceCatalogDeveloperPorfolioStackName}-DeveloperProductsPortfolioId'
+      PrincipalARN: !GetAtt PipelineManagerFunctionRole.Arn
+      PrincipalType: 'IAM'
+
+Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  PipelineManagerRawApi:
+    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/lambdaPipeline/"
+  PipelineManagerApi:
+    Value: !Join 
+    - ''
+    - - ' https://'
+      - Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-ApiGatewayCustomDomain"
+      - '/vcis-pipeline-manager'
+      - /pipeline
+  PipelineManagerFunction:
+    Description: "PipelineManagerFunction ARN"
+    Value: !GetAtt PipelineManagerFunction.Arn
+  PipelineManagerFunctionIamRole:
+    Description: "Implicit IAM Role created for PipelineManagerFunction"
+    Value: !GetAtt PipelineManagerFunctionRole.Arn
+      

@@ -1,0 +1,10 @@
+{
+  "Parameters" : {
+    "Env": "{{ENV}}",
+    "RestApiName" : "{{API_NAME}}",
+    "RestApiDescription" : "{{API_DESCRIPTION}}",
+    "LambdaAuthorizerARN" : "/vcis/{{ENV}}/infra/lambda-authorizer/arn",
+    "ProjectModuleTag": "/vcis/{{ENV}}/infra/tags/project-module-pod",
+    "CustomTags": "{{TAGS}}"
+  }
+}

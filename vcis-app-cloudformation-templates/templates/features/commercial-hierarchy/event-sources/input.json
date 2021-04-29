@@ -1,0 +1,33 @@
+{
+  "baseBranch": "develop",
+  "migrationBranchName": "VCT-10827-Sources",
+  "commitMessagePrefix": "VCT-10827 - Commercial Hierarchy sources",
+  "githubTokenSSM": "/vcis/non-prod/app/github/token-jrive20",
+  "tags": {
+    "teamName": "lannister",
+    "featureName": "commercial-hierarchy",
+    "applicationName": "Industry System",
+    "moduleName": "IS"
+  },
+  "queues": [
+    {
+      "name": "brazil-value-capture-ch-data-retriever-dev",
+      "topicsArns": [
+        "arn:aws:sns:us-east-1:285453578300:brazil-value-capture-bulk-splited-topic-dev"
+      ]
+    },
+    {
+      "name": "brazil-value-capture-ch-persister-dev"
+    },
+    {
+      "name": "brazil-value-capture-ch-process-dev",
+      "topicsArns": [
+        "arn:aws:sns:us-east-1:285453578300:brazil-value-capture-bulk-finished-topic-dev"
+      ]
+    }
+  ],
+  "topics": [
+    "arn:aws:sns:us-east-1:285453578300:brazil-value-capture-broadcast-trigger-dev",
+    "arn:aws:sns:us-east-1:285453578300:brazil-value-capture-ch-broadcast-dev"
+  ]
+}

@@ -1,0 +1,29 @@
+[
+  {
+    "baseBranch": "develop",
+    "migrationBranchName": "VCT-10603_pod-message-inbox-event-sources",
+    "commitMessagePrefix": "VCT-10603 - POD Message Inbox Event Sources",
+    "githubTokenSSM": "/vcis/non-prod/app/github/token-eppmx",
+    "tags": {
+      "teamName": "stark",
+      "featureName": "pod-commons",
+      "applicationName": "Industry System",
+      "moduleName": "IS"
+    },
+    "feature": "pod-commons",
+    "queues": [
+      {
+        "name": "brazil-value-capture-pod-message-inbox-updater-dev",
+        "withRedrivePolicy": true,
+        "topicsArns": [
+          "arn:aws:sns:us-east-1:285453578300:brazil-value-capture-pod-rol-adjusted-topic-dev",
+          "arn:aws:sns:us-east-1:285453578300:brazil-value-capture-pod-rol-updated-topic-dev"
+        ]
+      }
+    ],
+    "topics": [
+      "arn:aws:sns:us-east-1:285453578300:brazil-value-capture-pod-rol-adjusted-topic-dev",
+      "arn:aws:sns:us-east-1:285453578300:brazil-value-capture-pod-rol-updated-topic-dev"
+    ]
+  }
+]

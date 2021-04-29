@@ -1,0 +1,13 @@
+{
+  "Parameters": {
+    "Env": "dev",
+    "ProjectModuleTag": "/vcis/dev/infra/tags/project-module-pod",
+    "KMS": "/vcis/dev/app/kms/vcisAccount",
+    "CustomTags": "Key=mon:feature,Value=bulk-upload,Key=mon:team,Value=lannister,Key=mon:application,Value=Industry System,Key=mon:module,Value=IS",
+    "BulkSplitRequestSQSName": "vcis-app-bulk-split-request-tmp",
+    "BulkItemPersisterSQSName": "vcis-app-bulk-item-persister-tmp",
+    "BulkToSplitSQSName": "vcis-app-bulk-to-split-tmp",
+    "BulkFinishedTopicSNSName": "vcis-app-bulk-finished-topic-tmp",
+    "BulkSplitedTopicSNSName": "vcis-app-bulk-splited-topic-tmp"
+  }
+}

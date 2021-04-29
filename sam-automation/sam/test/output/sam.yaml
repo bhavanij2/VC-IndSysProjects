@@ -1,0 +1,237 @@
+Transform: 'AWS::Serverless-2016-10-31'
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+  FunctionName:
+    Description: "Function Name. Stage will be added to the name: {FunctionName}-{Stage}"
+    Type: String
+    Default: vcis-app-credit-exemption-balance-api
+  Timeout:
+    Description: "Timeout [s]"
+    Type: Number
+    Default: 60
+  MemorySize:
+    Description: "Memory Size [MB]"
+    Type: Number
+    Default: 128
+  KMS:
+    Description: "SSM Parameter Name containing KMS Arn for decrypting keys"
+    Type: AWS::SSM::Parameter::Value<String>
+  VPCStackName:
+    Description: "VPC Stack name"
+    Type: String
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+  AppAccountLevelResourcesStackName:
+    Description: "Account Level Resources Stack Name"
+    Type: String
+  ApiGwStackName:
+    Description: "API Gateway Stack name"
+    Type: String
+  ApiGateWayDeploymentUpdateStackName:
+    Description: "API Gateway deployment update stage"
+    Type: String
+  SharedResources1StackName:
+    Description: "SharedResources1StackName"
+    Type: String
+  SharedResources2StackName:
+    Description: "SharedResources2StackName"
+    Type: String
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+
+Mappings:
+  StagingValuesMap:
+    poc:
+      Stage: 'DEV'
+    dev:
+      Stage: 'DEV'
+    it:
+      Stage: 'TEST'
+    prod:
+      Stage: 'PROD'
+
+Resources:
+  FunctionApi:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Join ['-',[!Ref FunctionName, !FindInMap [StagingValuesMap, !Ref Env, Stage]]]
+      Handler: lambda.handler
+      Runtime: nodejs10.x
+      CodeUri: ./
+      Environment:
+        Variables:
+          STAGE: !FindInMap [StagingValuesMap, !Ref Env, Stage]
+          REGION:
+            Ref: AWS::Region
+          LOG_GROUP:
+            Fn::ImportValue: !Sub "${AppAccountLevelResourcesStackName}-LannisterGroup"
+      Timeout:
+        Ref: Timeout
+      MemorySize:
+        Ref: MemorySize
+      VpcConfig:
+        SubnetIds:
+          - Fn::ImportValue: !Sub "${VPCStackName}-PrivateSubnet1"
+          - Fn::ImportValue: !Sub "${VPCStackName}-PrivateSubnet2"
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub "${VPCStackName}-VcisRdsSecurityGroup"
+      Policies:
+        - VPCAccessPolicy: {}
+        #Inline Policy for Centralize Logging.
+        - Statement:
+          - Effect: Allow
+            Action:
+              - 'logs:DescribeLogStreams'
+            Resource:
+              Fn::Join:
+                - ''
+                - - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:'
+                  - Fn::ImportValue: !Sub "${AppAccountLevelResourcesStackName}-LannisterGroup"
+                  - ':log-stream:*'
+        # Inline policy allowing access to decrypt using KMS.
+        - Statement:
+          - Effect: Allow
+            Action:
+              - 'kms:Decrypt'
+            Resource:
+              Ref: KMS
+        - Statement:
+          - Effect: Allow
+            Action: 'iam:*'
+            Resource: '*'
+        - Statement:
+          - Effect: Allow
+            Action:
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            Resource:
+              Fn::ImportValue: !Sub "${SharedResources1StackName}-MyQueueConsumerArn"
+        - Statement:
+          - Effect: Allow
+            Action:
+            - sns:ReceiveMessage
+            - sns:DeleteMessage
+            Resource:
+              Fn::ImportValue: !Sub "${SharedResources1StackName}-MySNSConsumerArn"
+        - Statement:
+          - Effect: Allow
+            Action:
+            - sqs:SendMessage
+            Resource:
+              Fn::ImportValue: !Sub "${SharedResources1StackName}-MyQueueProducerArn"
+        - Statement:
+          - Effect: Allow
+            Action:
+            - sns:SendMessage
+            Resource:
+              Fn::ImportValue: !Sub "${SharedResources2StackName}-MySNSProducerArn"
+      PermissionsBoundary:
+              Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/standard-permissions-boundary
+
+  #Function Alias
+  LambdaAlias:
+    Type: "AWS::Lambda::Alias"
+    Properties:
+      FunctionName: !Ref FunctionApi
+      FunctionVersion: "$LATEST"
+      Name: !FindInMap [StagingValuesMap, !Ref Env, Stage]
+
+  LambdaFunctionSQSEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 1
+      EventSourceArn:
+        Fn::ImportValue: !Sub "${SharedResources1StackName}-MyQueueConsumerArn"
+      FunctionName: !Sub LambdaAlias
+
+  LambdaFunctionSNSEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 10
+      EventSourceArn:
+        Fn::ImportValue: !Sub "${SharedResources1StackName}-MySNSConsumerArn"
+      FunctionName: !Sub LambdaAlias
+
+  #Lambda permission to be invoked by API Gateway.
+  Permission:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - LambdaAlias
+      - FunctionApi
+    Properties:
+      FunctionName: !Join [':', [!Ref FunctionApi, !FindInMap [StagingValuesMap, !Ref Env, Stage]]]
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ''
+          - - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:'
+            - Fn::ImportValue: !Sub "${ApiGwStackName}-ApiGatewayId"
+            - '/*'
+
+
+  #Deployment of the API GW
+  ApiGatewayDeployment$timestamp:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: #All methods of API-GW created.
+      - Creditexemptionbalanceb2bbalancedocumentTypedocumentNumberGetMethod
+      - Creditexemptionbalanceb2bdocswaggerjsonGetMethod
+    Properties:
+      Description:
+        Fn::Sub: ${FunctionName}
+      RestApiId:
+        Fn::ImportValue: !Sub "${ApiGwStackName}-ApiGatewayId"
+
+  ApiGatewayUpdateStage:
+    Type: 'Custom::ApiGatewayUpdateStage'
+    Version: '1.0'
+    Properties:
+      ServiceToken:
+        Fn::ImportValue: !Sub "${ApiGateWayDeploymentUpdateStackName}-ApiGatewayUpdateStageFunctionArn"
+      DeploymentId: !Ref ApiGatewayDeployment$timestamp
+      RestApiId:
+        Fn::ImportValue: !Sub "${ApiGwStackName}-ApiGatewayId"
+    DependsOn:
+      - ApiGatewayDeployment$timestamp
+
+  Creditexemptionbalanceb2bbalancedocumentTypedocumentNumberGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: GET
+      Integration:
+        IntegrationHttpMethod: POST
+        PassthroughBehavior: WHEN_NO_MATCH
+        Type: AWS_PROXY
+        Uri: !Join ['',[!Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FunctionApi.Arn}:', !FindInMap [StagingValuesMap, !Ref Env, Stage], '/invocations']]
+      OperationName: 'lambda'
+      ResourceId:
+        Fn::ImportValue: !Sub "${ApiGwStackName}-Creditexemptionbalanceb2bbalancedocumentTypedocumentNumberPath"
+      RestApiId:
+        Fn::ImportValue: !Sub "${ApiGwStackName}-ApiGatewayId"
+  Creditexemptionbalanceb2bdocswaggerjsonGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: GET
+      Integration:
+        IntegrationHttpMethod: POST
+        PassthroughBehavior: WHEN_NO_MATCH
+        Type: AWS_PROXY
+        Uri: !Join ['',[!Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FunctionApi.Arn}:', !FindInMap [StagingValuesMap, !Ref Env, Stage], '/invocations']]
+      OperationName: 'lambda'
+      ResourceId:
+        Fn::ImportValue: !Sub "${ApiGwStackName}-Creditexemptionbalanceb2bdocswaggerjsonPath"
+      RestApiId:
+        Fn::ImportValue: !Sub "${ApiGwStackName}-ApiGatewayId"

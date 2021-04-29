@@ -1,0 +1,316 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  AWS CloudFormation Template for Continuous Delievery: This template
+  builds an AWS CodePipeline pipeline that implements a continuous delivery release
+  process for ECS/Fargate deployments.
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  S3ConfigStoreBucket:
+    Description: >
+      The name of the S3 bucket where config files are stored
+      Default is '/vcis/${Env}/infra/code-pipeline/s3-config-store-bucket'
+    Type: AWS::SSM::Parameter::Value<String>
+
+  S3SourceBucket:
+    Description: >
+      The name of the S3 bucket that contains the source artifact, which must be in the same region as this stack.
+      Default is '/vcis/${Env}/infra/code-pipeline/ecs-s3-source-bucket'
+    Type: AWS::SSM::Parameter::Value<String>
+  S3SourceKey:
+    Description: >
+      The file name of the source artifact, such as myfolder/myartifact or myartifact
+      Default is '/vcis/${Env}/infra/code-pipeline/ecs-s3-source-key'
+    Type: AWS::SSM::Parameter::Value<String>
+
+  S3CodePipelineArtifactStore:
+    Description: >
+      An S3 bucket that will be used to store artifacts from CodePipeline. Versioning must be enabled.
+      Default is '/vcis/${Env}/infra/code-pipeline/ecs/s3-artifact-store-bucket'
+    Type: AWS::SSM::Parameter::Value<String>
+
+  ECSClusterName:
+    Description: >
+      Name of the ECS Cluster
+      Default is '/vcis/${Env}/infra/ecs/output/cluster-name'
+    Type: AWS::SSM::Parameter::Value<String>
+
+  ECSServiceName:
+    Description: 'Name of the ECS Service'
+    Type: String
+
+
+  ECSContainerName:
+    Description: 'Name of the ECS Container'
+    Type: String
+
+  SNSNotificationArn:
+    Description: 'An SSM Parameter Store key. The value is an SNS ARN where CodePipeline sends notifications.'
+    Type: 'AWS::SSM::Parameter::Value<String>'
+
+Conditions:
+  IsProd: !Equals [ !Ref Env, "prod" ]
+
+Resources:
+
+  CodeBuildPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: "Policy for CodeBuild Service Role"
+      Path: "/"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Resource: arn:aws:logs:*:*:*
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+          - Resource:
+              - !Sub arn:aws:s3:::${S3CodePipelineArtifactStore}/*
+              - !Sub arn:aws:s3:::${S3ConfigStoreBucket}/*
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:GetObjectVersion
+          - Resource:
+              - !Sub arn:aws:s3:::${S3SourceBucket}/*
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+          - Resource: "*"
+            Effect: Allow
+            Action:
+              - ecr:GetAuthorizationToken
+          - Resource: !Sub arn:aws:ecr:*:${AWS::AccountId}:repository/*
+            Effect: Allow
+            Action:
+              - ecr:DescribeRepositories
+              - ecr:CreateRepository
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+              - ecr:BatchCheckLayerAvailability
+              - ecr:PutImage
+              - ecr:InitiateLayerUpload
+              - ecr:UploadLayerPart
+              - ecr:CompleteLayerUpload
+          - Resource: !Sub arn:aws:ssm:*:${AWS::AccountId}:parameter/vcis/*
+            Effect: Allow
+            Action:
+              - ssm:DescribeParameters
+              - ssm:GetParameters
+              - ssm:GetParameter
+
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref CodeBuildPolicy
+
+  CodePipelinePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: "Policy for CodePipeline Service Role"
+      Path: "/"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Resource:
+              - !Sub arn:aws:s3:::${S3CodePipelineArtifactStore}
+              - !Sub arn:aws:s3:::${S3CodePipelineArtifactStore}/*
+            Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:GetBucketVersioning
+          - Resource:
+              - !Sub arn:aws:s3:::${S3SourceBucket}
+              - !Sub arn:aws:s3:::${S3SourceBucket}/*
+              - !Sub arn:aws:s3:::${S3ConfigStoreBucket}
+              - !Sub arn:aws:s3:::${S3ConfigStoreBucket}/*
+            Effect: Allow
+            Action:
+              - s3:Get*
+              - s3:List*
+          - Resource: "*"
+            Effect: Allow
+            Action:
+              - ecs:DescribeServices
+              - ecs:DescribeTaskDefinition
+              - ecs:DescribeTasks
+              - ecs:ListTasks
+              - ecs:RegisterTaskDefinition
+              - ecs:UpdateService
+          - Resource: !GetAtt CodeBuildProject.Arn
+            Effect: Allow
+            Action:
+              - codebuild:StartBuild
+              - codebuild:BatchGetBuilds
+          - Resource: "*"
+            Effect: Allow
+            Action:
+              - iam:PassRole
+
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonSNSFullAccess'
+        - 'arn:aws:iam::aws:policy/IAMFullAccess'
+        - !Ref CodePipelinePolicy
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: CODEPIPELINE
+      Source:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:2.0
+        Type: LINUX_CONTAINER
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: ENV
+            Type: PLAINTEXT
+            Value: !Sub '${Env}'
+          - Name: ECR_URI
+            Type: PLAINTEXT
+            Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com
+          - Name: S3_CONFIG_STORE_BUCKET
+            Type: PLAINTEXT
+            Value: !Sub '${S3ConfigStoreBucket}'
+          - Name: CONTAINER_NAME
+            Type: PLAINTEXT
+            Value: !Sub '${ECSContainerName}'
+
+      ServiceRole: !Ref CodeBuildServiceRole
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn: !GetAtt CodePipelineServiceRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref 'S3CodePipelineArtifactStore'
+      DisableInboundStageTransitions: []
+      Stages:
+
+        - Name: SourceStage
+          Actions:
+            - Name: S3Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: S3
+                Version: '1'
+              Configuration:
+                S3Bucket: !Ref 'S3SourceBucket'
+                S3ObjectKey: !Ref 'S3SourceKey'
+              OutputArtifacts:
+                - Name: SourceArtifacts
+              RunOrder: 1
+            - Name: S3Config
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: 1
+                Provider: S3
+              Configuration:
+                S3Bucket: !Ref S3ConfigStoreBucket
+                S3ObjectKey: java-config.zip
+              OutputArtifacts:
+                - Name: ConfigArtifacts
+              RunOrder: 1
+
+        - Name: BuildStage
+          Actions:
+            - Name: BuildAndPushImage
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              InputArtifacts:
+                - Name: SourceArtifacts
+                - Name: ConfigArtifacts
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+                PrimarySource: SourceArtifacts
+              OutputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+
+        - Name: ApproveProdStage
+          Actions:
+            - !If
+              - IsProd
+              - Name: ApproveProdDeploy
+                ActionTypeId:
+                  Category: Approval
+                  Owner: AWS
+                  Provider: Manual
+                  Version: '1'
+                Configuration:
+                  NotificationArn: !Ref SNSNotificationArn
+                  CustomData: !Sub 'A new change set was created for the ${ECSServiceName}-${Env} stack. Do you want to push to production?'
+                RunOrder: 1
+              - !Ref AWS::NoValue
+
+        - Name: DeployStage
+          Actions:
+            - Name: Deploy
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: ECS
+                Version: 1
+              Configuration:
+                ClusterName: !Ref ECSClusterName
+                ServiceName: !Ref ECSServiceName
+                FileName: imagedefinitions.json
+              InputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+
+Outputs:
+  PipelineUrl:
+    Description: 'ECS Fargate Service Deployment CodePipeline'
+    Value:  !Join ["", [!Sub 'https://console.aws.amazon.com/codepipeline/home?region=${AWS::Region}#/view/', !Ref Pipeline] ]

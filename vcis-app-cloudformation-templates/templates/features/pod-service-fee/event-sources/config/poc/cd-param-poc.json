@@ -1,0 +1,26 @@
+[
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "poc"
+  },
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "vcis-app-pod-service-fee-event-sources"
+  },
+  {
+    "ParameterKey": "TemplateFileName",
+    "ParameterValue": "templates/features/pod-service-fee/event-sources/resources.yaml"
+  },
+  {
+    "ParameterKey": "ConfigPath",
+    "ParameterValue": "templates/features/pod-service-fee/event-sources/config/dev"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/poc/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "AppAccountLevelResourcesStackName",
+    "ParameterValue": "vcis-app-non-prod-account-level-resources"
+  }
+]

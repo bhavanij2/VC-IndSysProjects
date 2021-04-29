@@ -1,0 +1,11 @@
+{
+  "Parameters": {
+    "Env": "poc",
+    "ProjectModuleTag": "/vcis/poc/infra/tags/project-module-pod",
+    "KMS": "/vcis/poc/app/kms/sharedAccount",
+    "CustomTags": "Key=mon:feature,Value=pod-rol-fixed-volume,Key=mon:team,Value=stark,Key=mon:application,Value=Industry System,Key=mon:module,Value=IS",
+    "PodRolFixVolumeBulkSQSName": "vcis-app-pod-rol-fix-volume-bulk-tmp",
+    "PodRolFixedVolumeUpdaterSQSName": "vcis-app-pod-rol-fixed-volume-updater-tmp",
+    "PodFixedVolumeUpdatedTopicSNSName": "vcis-app-pod-fixed-volume-updated-topic-tmp"
+  }
+}

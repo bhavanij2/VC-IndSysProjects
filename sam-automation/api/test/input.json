@@ -1,0 +1,29 @@
+[{
+  "newRestApiName": "vcis-app-apigw-pod-credit-exemption-balance-extract",
+  "newRestApiDescription": "POD - Credit Exemption Balance and Extract API",
+  "pathsToInclude": [
+    "/credit-exemption/balance/b2b/balance/{documentType}/{documentNumber}",
+    "/credit-exemption/balance/b2b/doc/swagger.json",
+    "/credit-exemption/balance/b2b/extract/{documentType}/{documentNumber}/{technology}",
+    "/credit-exemption/balance/b2b/extract/{documentType}/{documentNumber}/{technology}/{from}/{to}",
+    "/credit-exemption/balance/b2b/history/{documentType}/{documentNumber}/{technology}",
+    "/credit-exemption/balance/b2b/transactions/{transactionID}/detail",
+    "/credit-exemption/balance/b2b/{version}/balance/{documentType}/{documentNumber}",
+    "/credit-exemption/balance/b2b/{version}/doc/swagger.json",
+    "/credit-exemption/balance/b2b/{version}/extract/{documentType}/{documentNumber}/{technology}",
+    "/credit-exemption/balance/b2b/{version}/extract/{documentType}/{documentNumber}/{technology}/{from}/{to}",
+    "/credit-exemption/balance/b2b/{version}/history/{documentType}/{documentNumber}/{technology}",
+    "/credit-exemption/balance/b2b/{version}/transactions/{transactionId}/detail",
+    "/credit-exemption/transfer/balance/{documentType}/{documentNumber}",
+    "/brazil-value-capture-credit-exemption-balance-api"
+  ],
+  "originalRestApiId": "gkg1ib9end",
+  "originalRestApiStageName": "dev",
+  "baseBranch": "develop",
+  "tags": {
+    "teamName": "lannister",
+    "featureName": "credit-exemption-balance",
+    "applicationName": "Industry System",
+    "moduleName": "IS"
+  }
+}]

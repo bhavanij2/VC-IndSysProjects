@@ -1,0 +1,109 @@
+Transform: 'AWS::Serverless-2016-10-31'
+Parameters:
+    Timeout:
+        Description: "Timeout [s]"
+        Type: Number
+        Default: 600
+    MemorySize:
+        Description: "Memory Size [MB]"
+        Type: Number
+        Default: 128
+Resources:
+    CfnStackEraserFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            Handler: index.handler
+            Runtime: nodejs10.x
+            CodeUri: ./
+            Timeout:
+              Ref: Timeout
+            MemorySize:
+              Ref: MemorySize
+            Policies:
+              - Statement:
+                - Effect: Allow
+                  Action:
+                    - cloudformation:DeleteStack
+                    - cloudformation:DescribeStacks
+                  Resource:
+                    - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:*/vcis*'
+                    - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:*/Vcis*'
+
+    CfnStackEraserExecutionRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            Action: 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service: cloudformation.amazonaws.com
+        Path: /
+        Policies:
+          - PolicyName: "SAMCloudFormationExecutionPolicy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - apigateway:DELETE
+                    - lambda:Delete*
+                    - cloudformation:CreateChangeSet
+                    - iam:DeleteRole
+                    - s3:Delete*
+                    - ec2:*
+                    - route53:ChangeResourceRecordSets
+                    - route53:GetHostedZone
+                    - route53:GetChange
+                    - route53:ListResourceRecordSets
+                  Resource: "*"
+                - Effect: "Allow"
+                  Action:
+                    - ssm:GetParameter*
+                    - ssm:DescribeParameters
+                  Resource: !Sub "arn:aws:ssm:*:${AWS::AccountId}:parameter/vcis/*"
+                - Effect: "Allow"
+                  Action:
+                    - sqs:*
+                  Resource: !Sub "arn:aws:sqs:*:${AWS::AccountId}:vcis*"
+                - Effect: "Allow"
+                  Action:
+                    - SNS:*
+                  Resource: !Sub "arn:aws:sns:*:${AWS::AccountId}:vcis*"
+                - Effect: Allow
+                  Action:
+                    - events:RemoveTargets
+                    - events:DeleteRule
+                    - events:DescribeRule
+                  Resource:
+                    - !Sub "arn:aws:events:*:${AWS::AccountId}:rule/vcis*"
+                - Effect: "Allow"
+                  Action:
+                    - servicecatalog:DisassociatePrincipalFromPortfolio 
+                  Resource: !Sub "arn:aws:catalog:us-east-1:${AWS::AccountId}:portfolio/*"
+                - Effect: "Allow"
+                  Action:
+                    - cloudfront:DeleteDistribution
+                    - cloudfront:TagResource
+                  Resource: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/*
+                - Effect: "Allow"
+                  Action:
+                    - cloudfront:DeleteCloudFrontOriginAccessIdentity
+                  Resource: !Sub "arn:aws:cloudfront::${AWS::AccountId}:origin-access-identity/*"
+                - Effect: "Allow"
+                  Action:
+                    - iam:DeleteServiceLinkedRole
+                  Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/*"
+Outputs:
+  CfnStackEraserFunctionCustomResource:
+    Description: "Cfn Stack Eraser Function Custom Resource"
+    Value: !GetAtt CfnStackEraserFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CfnStackEraserFunctionArn"
+  CfnStackEraserExecutionRole:
+    Description: "Cfn Stack Eraser Role to be used in the Custom Resource"
+    Value: !GetAtt CfnStackEraserExecutionRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-CfnStackEraserExecutionRoleArn"
+

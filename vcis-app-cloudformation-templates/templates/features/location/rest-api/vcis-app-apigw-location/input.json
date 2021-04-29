@@ -1,0 +1,30 @@
+{
+  "newRestApiName": "vcis-app-apigw-location",
+  "feature": "location",
+  "newRestApiDescription": "Location API",
+  "migrationBranchName": "VCT-10827-location",
+  "commitMessagePrefix": "VCT-10827 -API GW AUTOMATIC MIGRATION",
+  "githubTokenSSM": "/vcis/non-prod/app/github/token-jrive20",
+  "pathsToInclude": [
+    "/masterdata/location/city",
+    "/masterdata/location/city/{cityCode}",
+    "/masterdata/location/doc/{proxy+}",
+    "/masterdata/location/state",
+    "/masterdata/location/state/{stateCode}",
+    "/masterdata/location/state/{stateCode}/city",
+    "/masterdata/location/{version}/city",
+    "/masterdata/location/{version}/city/{cityCode}",
+    "/masterdata/location/{version}/state",
+    "/masterdata/location/{version}/state/{stateCode}",
+    "/masterdata/location/{version}/state/{stateCode}/city"
+  ],
+  "originalRestApiId": "mks7fkp2za",
+  "originalRestApiStageName": "dev",
+  "baseBranch": "develop",
+  "tags": {
+    "teamName": "lannister",
+    "featureName": "location",
+    "applicationName": "Industry System",
+    "moduleName": "IS"
+  }
+}

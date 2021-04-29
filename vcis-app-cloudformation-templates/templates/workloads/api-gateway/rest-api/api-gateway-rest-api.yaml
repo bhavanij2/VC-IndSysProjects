@@ -1,0 +1,185 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VCIS API Gateway
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+
+  RestApiName:
+    Type: String
+    Description: 'The API Name (eg: vcis-pod-credit-exemption-balance)'
+
+  RestApiDescription:
+    Type: String
+    Description: Rest API Description
+
+  StageName:
+    Type: String
+    Description: The name of the API Stage. Default is 'release' stage
+    Default: 'release'
+
+  RestApiCustomDomainName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Rest API Custom Domain Name. Default value is 'api.pod-np.its-plus.com' (NonProd) and 'api.pod.its-plus.com' (Prod)
+
+  LambdaAuthorizerStackName:
+    Type: String
+    Description: Stack that exports Lambda Authorizer ARN.
+
+  MinimumCompressionSize:
+    Type: Number
+    Default: 0
+    Description: 'Compression or decompression is not applied on the payload if the payload size is smaller than this value. Setting it to zero allows compression for any payload size.'
+
+Mappings:
+  StagingValuesMap:
+    poc:
+      Stage: 'DEV'
+    dev:
+      Stage: 'DEV'
+    it:
+      Stage: 'TEST'
+    prod:
+      Stage: 'PROD'
+
+Resources:
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${RestApiName}-${Env}'
+      Description: !Ref RestApiDescription
+      ApiKeySourceType: HEADER
+      MinimumCompressionSize: !Ref MinimumCompressionSize
+      EndpointConfiguration:
+        Types:
+          - EDGE
+
+    ## Lambda Authorizer
+  ApiGatewayLambdaAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    DependsOn: RestApi
+    Properties:
+      Name: !Sub 'vcis-pod-ping-authorizer-${Env}'
+      Type: 'REQUEST'
+      AuthorizerResultTtlInSeconds: 0
+      AuthorizerUri: !Join
+        - ''
+        - - 'arn:aws:apigateway:'
+          - !Ref 'AWS::Region'
+          - ':lambda:path/2015-03-31/functions/'
+          - Fn::ImportValue: !Sub "${LambdaAuthorizerStackName}-PodPingAuthorizer"
+          - '/invocations'
+      IdentitySource: 'method.request.header.Authorization'
+      RestApiId: !Ref RestApi
+
+  RootResource:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      RestApiId: !Ref RestApi
+      ParentId: !GetAtt RestApi.RootResourceId
+      PathPart: mock
+
+  MockMethod:
+    Type: AWS::ApiGateway::Method
+    DependsOn: RootResource
+    Properties:
+      ApiKeyRequired: false
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref ApiGatewayLambdaAuthorizer
+      HttpMethod: GET
+      Integration:
+        ConnectionType: INTERNET
+        IntegrationResponses:
+          - ResponseTemplates:
+              application/json: '{"message": "OK"}'
+            SelectionPattern: 2\d{2}
+            StatusCode: 200
+          - ResponseTemplates:
+              application/json: '{"message": "Internal Server Error"}'
+            SelectionPattern: 5\d{2}
+            StatusCode: 500
+        PassthroughBehavior: WHEN_NO_TEMPLATES
+        RequestTemplates:
+          application/json: '{"statusCode": 200 }'
+        Type: MOCK
+        TimeoutInMillis: 29000
+      MethodResponses:
+        - ResponseModels:
+            application/json: !Ref ResponseModel
+          StatusCode: 200
+        - ResponseModels:
+            application/json: !Ref ResponseModel
+          StatusCode: 500
+      OperationName: mock
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref RootResource
+
+  ResponseModel:
+    Type: AWS::ApiGateway::Model
+    Properties:
+      ContentType: application/json
+      RestApiId: !Ref RestApi
+      Schema: {}
+
+  Deployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: MockMethod
+    Properties:
+      Description: API Deployment
+      RestApiId: !Ref RestApi
+
+  Stage:
+    Type: AWS::ApiGateway::Stage
+    DependsOn: Deployment
+    Properties:
+      RestApiId: !Ref RestApi
+      DeploymentId: !Ref Deployment
+      StageName: !Ref StageName
+      Variables:
+        environment: !FindInMap [StagingValuesMap, !Ref Env, Stage]
+
+  ApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    DependsOn: Stage
+    Properties:
+      DomainName: !Ref RestApiCustomDomainName
+      BasePath: !Sub '${RestApiName}-${Env}'
+      RestApiId: !Ref RestApi
+      Stage: !Ref Stage
+
+Outputs:
+  Endpoint:
+    Description: Rest Api Endpoint URL
+    Value: !Sub 'https://${RestApiName}-${Env}.execute-api.${AWS::Region}.amazonaws.com'
+
+  RestApiGatewayId:
+    Description: ApiGatewayId
+    Value: !Ref RestApi
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayId'
+
+  RootResourceId:
+    Description: RootResourceId
+    Value: !GetAtt RestApi.RootResourceId
+    Export:
+      Name: !Sub '${AWS::StackName}-RootResourceId'
+
+  LambdaAuthorizerId:
+    Description: LambdaAuthorizerId
+    Value: !Ref ApiGatewayLambdaAuthorizer
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaAuthorizerId'

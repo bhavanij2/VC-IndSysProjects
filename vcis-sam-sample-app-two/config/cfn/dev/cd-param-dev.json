@@ -1,0 +1,30 @@
+[
+  {
+    "ParameterKey": "S3SourceKey",
+    "ParameterValue": "vcis-sam-sample-app-two-dev"
+  },
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "vcis-app-sam-sample-app-two"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/dev/infra/tags/project-module-pod"
+  },
+  {
+    "ParameterKey": "AppAccountLevelResourcesStackName",
+    "ParameterValue": "vcis-app-non-prod-account-level-resources"
+  },
+  {
+    "ParameterKey": "ApprovalNotificationsStackName",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "CustomTags",
+    "ParameterValue": "Key=mon:feature,Value=entered-area,Key=mon:team,Value=blackfyre"
+  }
+]

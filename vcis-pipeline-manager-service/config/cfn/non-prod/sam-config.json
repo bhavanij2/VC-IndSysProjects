@@ -1,0 +1,11 @@
+{
+  "Parameters": {
+    "Env": "non-prod",
+    "ProjectModuleTag": "/vcis/non-prod/infra/tags/project-module-value-capture-industry-system",
+    "CustomTags": "Key=mon:feature,Value=pipeline-manager,Key=mon:team,Value=mysterymachine",
+    "AccountLevelResourcesStackName": "vcis-non-prod-account-level-resources",
+    "VcisServiceCatalogDeveloperPorfolioStackName": "vcis-service-catalog-developer-products-portfolio-non-prod",
+    "VcisServiceCatalogAppSamCiCdPipelineProductStackName": "vcis-service-catalog-sam-ci-cd-pipeline-product-non-prod",
+    "VcisServiceCatalogAppInfraCiCdPipelineProductStackName": "vcis-service-catalog-infra-ci-cd-pipeline-product-non-prod"
+  }
+}

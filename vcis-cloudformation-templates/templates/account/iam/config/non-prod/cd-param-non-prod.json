@@ -1,0 +1,26 @@
+[
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "vcis-iam"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "non-prod"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/non-prod/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "TemplateFileName",
+    "ParameterValue": "templates/account/iam/vcis-iam.yaml"
+  },
+  {
+    "ParameterKey": "ConfigPath",
+    "ParameterValue": "templates/account/iam/config/non-prod"
+  },
+  {
+    "ParameterKey": "WorkLoadAccountLevelInputParamsStackName",
+    "ParameterValue": "vcis-non-prod-workloads-account-input-params"
+  }
+]

@@ -1,0 +1,33 @@
+{
+  "name": "migration-automation-shared",
+  "version": "1.0.0",
+  "description": "API Gateway Deployment Cloud Formation Custom Resource",
+  "main": "index.js",
+  "license": "UNLICENSED",
+  "repository": "https://github.platforms.engineering/POD-Inc/vcis-cloudformation-templates",
+  "jest": {
+    "roots": [
+      "test"
+    ],
+    "coverageReporters": [
+      "text",
+      "cobertura"
+    ]
+  },
+  "scripts": {
+    "test": "jest --env=node",
+    "lint": "eslint .",
+    "lintfix": "eslint --fix .",
+    "coverage": "jest --coverage --coverageDirectory=coverage"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.566.0",
+    "github-api": "3.3.0"
+  },
+  "devDependencies": {
+    "eslint": "^6.8.0",
+    "eslint-config-google": "^0.14.0",
+    "jest": "^24.9.0",
+    "jest-cli": "^24.9.0"
+  }
+}

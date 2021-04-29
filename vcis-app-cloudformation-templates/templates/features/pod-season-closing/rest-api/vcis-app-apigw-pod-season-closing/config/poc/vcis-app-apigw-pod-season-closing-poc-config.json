@@ -1,0 +1,11 @@
+{
+  "Parameters" : {
+    "Env": "poc",
+    "RestApiName" : "vcis-app-apigw-pod-season-closing",
+    "RestApiDescription" : "POD - Season Closing",
+    "LambdaAuthorizerStackName": "vcis-app-pod-ping-authorizer-poc",
+    "RestApiCustomDomainName" : "/vcis/non-prod/infra/rest-api-domain/name",
+    "ProjectModuleTag": "/vcis/poc/infra/tags/project-module-value-capture-industry-system",
+    "CustomTags": "Key=mon:feature,Value=pod-season-closing,Key=mon:team,Value=stark,Key=mon:application,Value=Industry System,Key=mon:module,Value=IS"
+  }
+}

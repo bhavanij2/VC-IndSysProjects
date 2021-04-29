@@ -1,0 +1,94 @@
+Transform: [VcisCommonTagsMacro]
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+  KMS:
+      Description: "SSM Parameter Name containing KMS Arn for decrypting keys"
+      Type: AWS::SSM::Parameter::Value<String>
+  ProjectModuleTag:
+      Type: AWS::SSM::Parameter::Value<String>
+      Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+  PodMessageInboxUpdaterSQSName:
+    Type: String
+    Description: PodMessageInboxUpdaterSQSName description
+
+Resources:
+  ### Queues
+  PodMessageInboxUpdaterSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 30
+      QueueName: !Join
+        - ''
+        - - !Ref PodMessageInboxUpdaterSQSName
+          - '-'
+          - !Ref Env
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PodMessageInboxUpdaterSQSError.Arn
+        maxReceiveCount: 5
+
+  PodMessageInboxUpdaterSQSError:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 30
+      QueueName: !Join
+        - ''
+        - - !Ref PodMessageInboxUpdaterSQSName
+          - '-error-'
+          - !Ref Env
+
+  PodMessageInboxUpdaterSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt PodMessageInboxUpdaterSQS.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt PodMessageInboxUpdaterSQS.Arn
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt PodMessageInboxUpdaterSQS.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn:
+                  - !Sub 'arn:aws:sns:us-east-1:578248469025:vcis-app-pod-rol-adjusted-topic-${Env}'
+                  - !Sub 'arn:aws:sns:us-east-1:578248469025:vcis-app-pod-rol-updated-topic-${Env}'
+      Queues:
+        - !Ref PodMessageInboxUpdaterSQS
+    DependsOn:
+      - PodMessageInboxUpdaterSQS
+
+
+  ### SNS Topics
+
+Outputs:
+  PodMessageInboxUpdaterSQSOutput:
+    Description: "PodMessageInboxUpdaterSQS"
+    Value: !GetAtt PodMessageInboxUpdaterSQS.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-PodMessageInboxUpdaterSQS'

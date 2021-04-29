@@ -1,0 +1,10 @@
+#!/usr/bin/env node
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+require("source-map-support/register");
+const lib_1 = require("../lib");
+const vcis_cdk_utils_1 = require("@monsantoit/vcis-cdk-utils");
+const app = new vcis_cdk_utils_1.VcisApp();
+new lib_1.VcisIamRolesCdkStack(app, 'vcis-iam-stack');
+app.run();
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoidmNpcy1pYW0tY2RrLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsidmNpcy1pYW0tY2RrLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7OztBQUNBLHVDQUFxQztBQUNyQyxnQ0FBNEM7QUFDNUMsK0RBQW1EO0FBRW5ELE1BQU0sR0FBRyxHQUFHLElBQUksd0JBQU8sRUFBRSxDQUFDO0FBRTFCLElBQUksMEJBQW9CLENBQUMsR0FBRyxFQUFFLGdCQUFnQixDQUFDLENBQUM7QUFFaEQsR0FBRyxDQUFDLEdBQUcsRUFBRSxDQUFDIiwic291cmNlc0NvbnRlbnQiOlsiIyEvdXNyL2Jpbi9lbnYgbm9kZVxuaW1wb3J0ICdzb3VyY2UtbWFwLXN1cHBvcnQvcmVnaXN0ZXInO1xuaW1wb3J0IHtWY2lzSWFtUm9sZXNDZGtTdGFja30gZnJvbSAnLi4vbGliJztcbmltcG9ydCB7VmNpc0FwcH0gZnJvbSBcIkBtb25zYW50b2l0L3ZjaXMtY2RrLXV0aWxzXCI7XG5cbmNvbnN0IGFwcCA9IG5ldyBWY2lzQXBwKCk7XG5cbm5ldyBWY2lzSWFtUm9sZXNDZGtTdGFjayhhcHAsICd2Y2lzLWlhbS1zdGFjaycpO1xuXG5hcHAucnVuKCk7XG4iXX0=

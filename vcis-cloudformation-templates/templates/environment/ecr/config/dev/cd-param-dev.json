@@ -1,0 +1,22 @@
+[
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "vcis-ecr"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/dev/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "TemplateFileName",
+    "ParameterValue": "/vcis/dev/infra/code-deploy/vcis-ecr-template"
+  },
+  {
+    "ParameterKey": "ConfigPath",
+    "ParameterValue": "/vcis/dev/infra/code-deploy/vcis-ecr-config-path"
+  }
+]

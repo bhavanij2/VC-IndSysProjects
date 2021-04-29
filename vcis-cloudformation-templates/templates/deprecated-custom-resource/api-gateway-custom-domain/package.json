@@ -1,0 +1,20 @@
+{
+  "name": "api-gateway-custom-domain",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "preinstall": "(cd crud && npm run lint); (cd deadletter && npm run lint);",
+    "postinstall": "(cd crud &&  npm install); (cd deadletter &&  npm install);"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.platforms.engineering/POD-Inc/vcis-cloudformation-templates"
+  },
+  "author": "afrei",
+  "license": "ISC",
+  "devDependencies": {
+    "aws-sdk": "^2.757.0",
+    "eslint": "^7.9.0",
+    "eslint-config-google": "^0.14.0"
+  }
+}

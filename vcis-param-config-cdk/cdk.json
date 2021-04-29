@@ -1,0 +1,43 @@
+{
+  "app": "node bin/vcis-param-config-cdk.js",
+  "context": {
+    "InputParameters": {
+      "generic": {
+        "vpc-ssm-param-path": {
+          "vpcCidrList": "/vcis/{ENV}/infra/vpc/input/vpcCidrList",
+          "primaryCentralBastionIP": "/vcis/{ENV}/infra/vpc/input/primaryCentralBastionIP",
+          "secondaryCentralBastionIP": "/vcis/{ENV}/infra/vpc/input/secondaryCentralBastionIP",
+          "bastionHostKeyName": "/vcis/{ENV}/infra/vpc/input/bastionHostKeyName",
+          "bastionInstanceType": "/vcis/{ENV}/infra/vpc/input/bastionInstanceType"
+        },
+        "tags-ssm-param-path": {
+          "owner": "/vcis/{ENV}/infra/tags/owner",
+          "costCenter": "/vcis/{ENV}/infra/tags/costCenter",
+          "project": "/vcis/{ENV}/infra/tags/project",
+          "environment": "/vcis/{ENV}/infra/tags/env",
+          "regulated": "/vcis/{ENV}/infra/tags/regulated",
+          "dataClassification": "/vcis/{ENV}/infra/tags/dataClassification"
+        }
+      },
+      "non-prod": {
+        "vpc": {
+          "vpcCidrList": "172.18.0.0/19",
+          "primaryCentralBastionIP": "52.22.113.235",
+          "secondaryCentralBastionIP": "52.39.76.251",
+          "bastionHostKeyName": "vcis-nonprod-keypair",
+          "bastionInstanceType": "t2.nano"
+        },
+        "tags": {
+          "owner": "GAMITCH",
+          "costCenter": "5180-9130-SLR74781",
+          "project": "VC-Industry-System",
+          "environment": "non-prod",
+          "regulated": "sox",
+          "dataClassification": "internal"
+        }
+      },
+      "prod": {
+      }
+    }
+  }
+}

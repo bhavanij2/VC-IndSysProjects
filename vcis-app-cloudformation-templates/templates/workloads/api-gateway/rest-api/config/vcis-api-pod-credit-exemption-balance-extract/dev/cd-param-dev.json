@@ -1,0 +1,26 @@
+[
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "vcis-app-apigw-pod-credit-exemption-balance-extract"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/dev/infra/tags/project-module-pod"
+  },
+  {
+    "ParameterKey": "TemplateFileName",
+    "ParameterValue": "templates/workloads/api-gateway/rest-api/api-gateway-rest-api.yaml"
+  },
+  {
+    "ParameterKey": "ConfigPath",
+    "ParameterValue": "templates/workloads/api-gateway/rest-api/config/vcis-api-pod-credit-exemption-balance-extract/dev"
+  },
+  {
+    "ParameterKey": "AppAccountLevelResourcesStackName",
+    "ParameterValue": "vcis-app-non-prod-account-level-resources"
+  }
+]

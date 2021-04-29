@@ -1,0 +1,17 @@
+{
+  "Parameters": {
+    "FunctionName": "{{FUNCTION_NAME}}",
+    "Env": "{{ENV}}",
+    "AppAccountLevelResourcesStackName": "vcis-app-{{ACCOUNT}}-account-level-resources",
+    "KMS": "/vcis/{{ENV}}/app/kms/sharedAccount",
+    {{#API_GW_NAME}}
+    "ApiGwStackName": "{{API_GW_NAME}}-{{ENV}}",
+    "ApiGateWayDeploymentUpdateStackName": "vcis-{{ACCOUNT}}-pod-api-gateway-update-stage",
+    {{/API_GW_NAME}}
+    {{#HAS_VPC}}
+    "VPCStackName": "vcis-vpc-{{ENV}}",
+    {{/HAS_VPC}}
+    "ProjectModuleTag": "/vcis/{{ENV}}/infra/tags/project-module-value-capture-industry-system",
+    "CustomTags": "{{TAGS}}"
+  }
+}

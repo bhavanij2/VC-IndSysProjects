@@ -1,0 +1,32 @@
+{
+  "name": "cfn-stack-eraser-custom-resource",
+  "version": "1.0.0",
+  "description": "Cfn stack eraser Custom Resource",
+  "main": "index.js",
+  "license": "UNLICENSED",
+  "repository": "https://github.platforms.engineering/POD-Inc/vcis-cloudformation-templates",
+  "jest": {
+    "roots": [
+      "test"
+    ],
+    "coverageReporters": [
+      "text",
+      "cobertura"
+    ]
+  },
+  "scripts": {
+    "test": "jest --env=node",
+    "local": "NODE_ENV=LOCAL node app.local.js",
+    "coverage": "jest --coverage --coverageDirectory=coverage"
+  },
+  "dependencies": {
+    "axios": "^0.19.2"
+  },
+  "devDependencies": {
+    "aws-sdk": "^2.638.0",
+    "eslint": "^6.5.0",
+    "eslint-config-google": "^0.14.0",
+    "jest": "^24.9.0",
+    "jest-cli": "^24.9.0"
+  }
+}

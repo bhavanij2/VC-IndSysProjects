@@ -1,0 +1,16 @@
+{
+  "non-prod": {
+    "dependencies": {
+      "@monsantoit/vcis-cdk-utils": "non-prod",
+      "@monsantoit/vcis-iam-roles-cdk": "non-prod",
+      "@monsantoit/vcis-vpc-cdk": "non-prod"
+    }
+  },
+  "prod": {
+    "dependencies": {
+      "@monsantoit/vcis-cdk-utils": "latest",
+      "@monsantoit/vcis-iam-roles-cdk": "latest",
+      "@monsantoit/vcis-vpc-cdk": "latest"
+    }
+  }
+}

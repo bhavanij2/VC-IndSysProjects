@@ -1,0 +1,26 @@
+[
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "vcis-service-catalog-developer-products-portfolio"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "prod"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/prod/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "TemplateFileName",
+    "ParameterValue": "templates/application/service-catalog/portfolio/developer-portfolio/developer-portfolio.yaml"
+  },
+  {
+    "ParameterKey": "ConfigPath",
+    "ParameterValue": "templates/application/service-catalog/portfolio/developer-portfolio/config/prod"
+  },
+  {
+    "ParameterKey": "WorkLoadAccountLevelInputParamsStackName",
+    "ParameterValue": "vcis-prod-workloads-account-input-params"
+  }
+]

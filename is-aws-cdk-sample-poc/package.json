@@ -1,0 +1,26 @@
+{
+  "name": "is-aws-cdk-sample-poc",
+  "version": "0.1.0",
+  "bin": {
+    "is-aws-cdk-sample-poc": "bin/is-aws-cdk-sample-poc.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk"
+  },
+  "devDependencies": {
+    "@types/node": "^8.9.4",
+    "aws-cdk": "^0.29.0",
+    "typescript": "^3.1.2"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-ec2": "^0.29.0",
+    "@aws-cdk/aws-iam": "^0.29.0",
+    "@aws-cdk/aws-lambda": "^0.29.0",
+    "@aws-cdk/aws-lambda-event-sources": "^0.29.0",
+    "@aws-cdk/aws-sqs": "^0.29.0",
+    "@aws-cdk/cdk": "^0.29.0",
+    "source-map-support": "^0.5.9"
+  }
+}

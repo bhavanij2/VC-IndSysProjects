@@ -1,0 +1,38 @@
+[
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/dev/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "S3ConfigStoreBucket",
+    "ParameterValue": "/vcis/dev/infra/code-pipeline/s3-config-store-bucket"
+  },
+  {
+    "ParameterKey": "S3SourceBucket",
+    "ParameterValue": "/vcis/dev/infra/code-pipeline/ecs-s3-source-bucket"
+  },
+  {
+    "ParameterKey": "S3SourceKey",
+    "ParameterValue": "/vcis/dev/infra/code-pipeline/ecs-s3-source-key"
+  },
+  {
+    "ParameterKey": "S3CodePipelineArtifactStore",
+    "ParameterValue": "/vcis/dev/infra/code-pipeline/ecs/s3-artifact-store-bucket"
+  },
+  {
+    "ParameterKey": "ECSClusterName",
+    "ParameterValue": "/vcis/dev/infra/ecs/output/cluster-name"
+  },
+  {
+    "ParameterKey": "ECSServiceName",
+    "ParameterValue": "vcis-todos-service-dev"
+  },
+  {
+    "ParameterKey": "ECSContainerName",
+    "ParameterValue": "vcis-todos-service-dev-app"
+  }
+]

@@ -1,0 +1,3 @@
+{
+    "app": "node bin/vcis-iam-cdk.js"
+}

@@ -1,0 +1,25 @@
+{
+  "Parameters" : {
+    "Env": "it",
+    "ProjectModuleTag": "/vcis/it/infra/tags/project-module-value-capture-industry-system",
+    "CloudFrontDashboardName": "itsplus IT",
+    "CloudfrontId": "",
+    "CheckAuthLambdaName": "",
+    "CheckAuthLambdaVersion": "",
+    "ParseAuthLambdaName": "",
+    "ParseAuthLambdaVersion": "",
+    "RefreshAuthLambdaName": "",
+    "RefreshAuthLambdaVersion": "",
+    "S3WebPagesBucket": "",
+    "CloudFrontRegion": "us-east-1",
+    "InfraOpsSlackNotifierStackName": "",
+    "4xxErrorRateThreshold": 0.15,
+    "5xxErrorRateThreshold": 0.15,
+    "RequestThreshold": 1000,
+    "S3BucketSizeThreshold": 150000,
+    "4xxErrorRatePeriod": 300,
+    "5xxErrorRatePeriod": 300,
+    "RequestPeriod": 300,
+    "S3BucketSizePeriod": 300
+  }
+}

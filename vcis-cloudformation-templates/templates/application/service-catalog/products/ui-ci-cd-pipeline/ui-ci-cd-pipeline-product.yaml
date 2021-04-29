@@ -1,0 +1,97 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  AWS CloudFormation Template For Service Catalog Product - UI CI-CD Pipeline
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Description: 'Environment in which resources should be deployed'
+    Type: String
+    AllowedValues:
+      - non-prod
+      - prod
+    ConstraintDescription: Must be either non-prod or prod
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  UiCiCdPipelineProductName:
+    Description: UI CI CD Service Catalog Product Name
+    Type: String
+    Default: 'ui-ci-cd-pipeline'
+
+  UiCiCdPipelineProductDescription:
+    Description: UI CI CD Service Catalog Product Name
+    Type: String
+    Default: 'CI-CD Pipeline for UI Resources Deployment'
+
+  AccountLevelResourcesStackName:
+    Description: >-
+      Stack name exporting Account Level Resources like Service Catalog Product Source Bucket.
+    Type: String
+
+Resources:
+  UiCiCdPipelineProduct:
+    Type: AWS::ServiceCatalog::CloudFormationProduct
+    Properties:
+      Name: !Ref UiCiCdPipelineProductName
+      Description: !Ref UiCiCdPipelineProductDescription
+      Owner: 'VCIS Cloud Admin'
+      ProvisioningArtifactParameters:
+        - Name: 1.0.0
+          Description: 'Initial Version'
+          Info:
+            "LoadTemplateFromURL":
+              !Join
+                - ''
+                - - "https://"
+                  - Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-ServiceCatalogProductsSourceBucket"
+                  - ".s3.amazonaws.com/ui-ci-cd-pipeline/1.0.0/ui-ci-cd-pipeline.yaml"
+        - Name: 1.0.1
+          Description: 'Version 1.0.1'
+          Info:
+            "LoadTemplateFromURL":
+              !Join
+                - ''
+                - - "https://"
+                  - Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-ServiceCatalogProductsSourceBucket"
+                  - ".s3.amazonaws.com/ui-ci-cd-pipeline/1.0.1/ui-ci-cd-pipeline.yaml"
+        - Name: 1.0.2
+          Description: 'Increased the Compute type to Medium'
+          Info:
+            "LoadTemplateFromURL":
+              !Join
+                - ''
+                - - "https://"
+                  - Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-ServiceCatalogProductsSourceBucket"
+                  - ".s3.amazonaws.com/ui-ci-cd-pipeline/1.0.2/ui-ci-cd-pipeline.yaml"
+        - Name: 1.0.3
+          Description: 'Updated so user can choose between ComputeTypes'
+          Info:
+            "LoadTemplateFromURL":
+              !Join
+                - ''
+                - - "https://"
+                  - Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-ServiceCatalogProductsSourceBucket"
+                  - ".s3.amazonaws.com/ui-ci-cd-pipeline/1.0.3/ui-ci-cd-pipeline.yaml"
+        - Name: 1.0.4
+          Description: 'Added new parameter to define profile for build stage'
+          Info:
+            "LoadTemplateFromURL":
+              !Join
+                - ''
+                - - "https://"
+                  - Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-ServiceCatalogProductsSourceBucket"
+                  - ".s3.amazonaws.com/ui-ci-cd-pipeline/1.0.4/ui-ci-cd-pipeline.yaml"
+      SupportDescription: 'Please contact VCIS Cloud Admins for any assistance.'
+      SupportUrl: 'https://velocity.ag/profile/groups/VCISADMINROLESSO/members'
+
+Outputs:
+  UiCiCdPipelineProductId:
+    Description: 'UI CI-CD Pipeline Product ID'
+    Value: !Ref UiCiCdPipelineProduct
+    Export:
+      Name: !Sub '${AWS::StackName}-UiCiCdPipelineProductId'

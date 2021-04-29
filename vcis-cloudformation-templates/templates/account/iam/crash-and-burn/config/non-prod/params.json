@@ -1,0 +1,14 @@
+[
+  {
+    "ParameterKey": "AdminRoleName",
+    "ParameterValue": "vcis-crash-and-burn-admin-role"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/poc/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "non-prod"
+  }
+]

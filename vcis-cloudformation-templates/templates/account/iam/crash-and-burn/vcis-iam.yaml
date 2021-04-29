@@ -1,0 +1,241 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  AdminRoleName:
+    Description: >
+      This is the Admin role assumed by humans when they need to perform actions in the
+      account requiring elevated privileges.
+    Type: String
+    Default: "vcis-crash-and-burn-admin-role"
+
+  Env:
+    Description: >-
+      A value used to describe the environment you will deploy to. This value will be used to get values
+      from SSM Parameter Store. Keys in Parameter store should begin with: /vcis/environment.
+    Type: String
+    AllowedValues:
+      - non-prod
+    ConstraintDescription: Must be a non-prod.
+
+  # SSM parameter for Project Module tag
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+Resources:
+  VcisViewOnlyPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - apigateway:GET
+              - cloudformation:Describe*
+              - cloudformation:Get*
+              - cloudformation:List*
+              - cloudformation:Estimate*
+              - cloudformation:Preview*
+              - cloudtrail:Describe*
+              - cloudtrail:Get*
+              - cloudtrail:List*
+              - cloudtrail:LookupEvents
+              - cloudwatch:Describe*
+              - cloudwatch:GetMetricData
+              - cloudwatch:GetMetricStatistics
+              - cloudwatch:List*
+              - codebuild:BatchGet*
+              - codebuild:List*
+              - codecommit:BatchGet*
+              - codecommit:Get*
+              - codecommit:List*
+              - codepipeline:List*
+              - codepipeline:Get*
+              - cognito-idp:AdminList*
+              - cognito-idp:List*
+              - cognito-idp:Describe*
+              - cognito-idp:Get*
+              - ec2:Describe*
+              - ec2:Get*
+              - ecr:BatchCheck*
+              - ecr:BatchGet*
+              - ecr:Describe*
+              - ecr:Get*
+              - ecr:List*
+              - events:Describe*
+              - events:List*
+              - events:Test*
+              - health:Describe*
+              - health:Get*
+              - health:List*
+              - iam:Generate*
+              - iam:Get*
+              - iam:List*
+              - iam:Simulate*
+              - kinesis:ListStreams
+              - kms:Describe*
+              - kms:Get*
+              - kms:List*
+              - lambda:List*
+              - lambda:GetAccountSettings
+              - logs:Describe*
+              - logs:Get*
+              - logs:FilterLogEvents
+              - logs:ListTagsLogGroup
+              - logs:TestMetricFilter
+              - route53:Get*
+              - route53:List*
+              - route53:Test*
+              - route53domains:Check*
+              - route53domains:Get*
+              - route53domains:List*
+              - route53domains:View*
+              - s3:ListAllMyBuckets
+              - s3:ListBucket
+              - servicecatalog:List*
+              - servicecatalog:Scan*
+              - servicecatalog:Search*
+              - servicecatalog:Describe*
+              - sns:Get*
+              - sns:List*
+              - sns:Check*
+              - sns:Publish
+              - sqs:Get*
+              - sqs:List*
+              - sqs:Receive*
+              - ssm:Describe*
+              - ssm:Get*
+              - ssm:List*
+              - sts:Get*
+              - tag:Get*
+              - trustedadvisor:Describe*
+              - waf:Get*
+              - waf:List*
+              - waf-regional:List*
+              - waf-regional:Get*
+              - xray:BatchGet*
+              - xray:Get*
+              - cloudfront:ListDistributions
+              - cognito-idp:Get*
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+
+  VcisAdminManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - cloudfront:*
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - codebuild:*
+            Effect: Allow
+            Resource:
+              - !Sub "arn:aws:codebuild:*:${AWS::AccountId}:*"
+          - Action:
+              - codecommit:*
+            Effect: Allow
+            Resource:
+              - !Sub "arn:aws:codecommit:*:${AWS::AccountId}:*"
+          - Action:
+              - codepipeline:*
+            Effect: Allow
+            Resource:
+              - !Sub "arn:aws:codepipeline:*:${AWS::AccountId}:*"
+          - Action:
+              - cloudformation:*
+            Effect: Allow
+            Resource:
+              - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:*/*"
+          - Action:
+              - cloudwatch:*
+            Effect: Allow
+            Resource:
+              - !Sub "arn:aws:cloudwatch:*:${AWS::AccountId}:alarm:*"
+              - !Sub "arn:aws:cloudwatch:*:${AWS::AccountId}:dashboard:*"
+          - Action:
+              - ec2:*
+            Effect: Allow
+            Resource:
+              - !Sub "arn:aws:ec2:*:${AWS::AccountId}:*/*"
+          - Action:
+              - ecr:*
+            Effect: Allow
+            Resource: !Sub "arn:aws:ecr:*:${AWS::AccountId}:repository/*"
+          - Action:
+              - elasticloadbalancing:*
+            Effect: Allow
+            Resource:
+              - !Sub "arn:aws:elasticloadbalancing:*:${AWS::AccountId}:loadbalancer/app/*"
+              - !Sub "arn:aws:elasticloadbalancing:*:${AWS::AccountId}:targetgroup/*"
+          - Action:
+              - events:*
+            Effect: Allow
+            Resource:
+              - !Sub "arn:aws:events:*:${AWS::AccountId}:rule/*"
+          - Action:
+              - iam:*
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - kms:*
+            Effect: Allow
+            Resource: !Sub "arn:aws:kms:*:${AWS::AccountId}:key/*"
+          - Action:
+              - logs:*
+            Effect: Allow
+            Resource:
+              - !Sub "arn:aws:logs:*:${AWS::AccountId}:*:*"
+          - Action:
+              - s3:*
+            Effect: Allow
+            Resource: !Sub "arn:aws:s3:::*"
+          - Action:
+              - sns:*
+            Effect: Allow
+            Resource: !Sub "arn:aws:sns:*:${AWS::AccountId}:*"
+          - Action:
+              - sqs:*
+            Effect: Allow
+            Resource: !Sub "arn:aws:sqs:*:${AWS::AccountId}:*"
+          - Action:
+              - ssm:*
+            Effect: Allow
+            Resource:
+              - !Sub "arn:aws:ssm:*:${AWS::AccountId}:parameter/*"
+          - Action:
+              - cognito-idp:*
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - elasticfilesystem:*
+            Effect: Allow
+            Resource: "*"
+
+        Version: "2012-10-17"
+
+  VcisAdminRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref AdminRoleName
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRoleWithSAML
+            Condition:
+              StringEquals:
+                SAML:aud: https://signin.aws.amazon.com/saml
+            Effect: Allow
+            Principal:
+              Federated: !Sub "arn:aws:iam::${AWS::AccountId}:saml-provider/PingOne"
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSLambdaFullAccess
+        - arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
+        - arn:aws:iam::aws:policy/AWSServiceCatalogAdminFullAccess
+        - Ref: VcisViewOnlyPolicy
+        - Ref: VcisAdminManagedPolicy
+      MaxSessionDuration: 14400

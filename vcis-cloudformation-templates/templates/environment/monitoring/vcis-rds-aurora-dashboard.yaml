@@ -1,0 +1,204 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VCIS Industry System RDS Aurora Dashboard'
+
+Parameters:
+  AuroraStackName:
+      Type: 'String'
+      Description: The RDS Aurora Stack name
+
+Resources:
+  CloudWatchDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties: 
+      DashboardName:
+        Fn::ImportValue: !Sub "${AuroraStackName}-DatabaseClusterIdentifier"
+      DashboardBody:
+        Fn::Sub:
+          - '{
+                "widgets": [
+                    {
+                        "type": "alarm",
+                        "x": 0,
+                        "y": 0,
+                        "width": 24,
+                        "height": 3,
+                        "properties": {
+                            "title": "Alarms",
+                            "alarms": [
+                                "${DatabaseWriterCPUAlarm}",
+                                "${DatabaseWriterMemoryAlarm}",
+                                "${DatabaseWriterConnectionsAlarm}",
+                                "${DatabaseReaderCPUAlarm}",
+                                "${DatabaseReaderMemoryAlarm}",
+                                "${DatabaseReaderConnectionsAlarm}",
+                                "${DatabaseReplicationAlarm}",
+                                "${DatabaseFreeStorageSpaceAlarm}"
+                            ]
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 0,
+                        "y": 3,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "view": "timeSeries",
+                            "stacked": false,
+                            "metrics": [
+                                [ "AWS/RDS", "CPUUtilization", "DBClusterIdentifier", "${DatabaseClusterIdentifier}" ]
+                            ],
+                            "region": "${AWS::Region}",
+                            "title": "CPU Utilization",
+                            "period": 300
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 6,
+                        "y": 3,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "metrics": [
+                                [ "AWS/RDS", "FreeableMemory", "DBClusterIdentifier", "${DatabaseClusterIdentifier}", { "color": "#2ca02c" } ]
+                            ],
+                            "view": "timeSeries",
+                            "stacked": true,
+                            "region": "${AWS::Region}",
+                            "title": "Freeable Memory",
+                            "period": 300,
+                            "stat": "Average"
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 0,
+                        "y": 9,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "metrics": [
+                                [ "AWS/RDS", "AuroraReplicaLag", "DBClusterIdentifier", "${DatabaseClusterIdentifier}", { "color": "#bcbd22" } ]
+                            ],
+                            "view": "timeSeries",
+                            "stacked": true,
+                            "region": "${AWS::Region}",
+                            "title": "Replica Lag",
+                            "stat": "Average",
+                            "period": 300
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 12,
+                        "y": 9,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "metrics": [
+                                [ "AWS/RDS", "WriteIOPS", "DBClusterIdentifier", "${DatabaseClusterIdentifier}", { "color": "#9467bd" } ]
+                            ],
+                            "view": "timeSeries",
+                            "stacked": false,
+                            "region": "${AWS::Region}",
+                            "title": "WriteIOPS",
+                            "stat": "Average",
+                            "period": 300
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 6,
+                        "y": 9,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "view": "timeSeries",
+                            "stacked": false,
+                            "metrics": [
+                                [ "AWS/RDS", "ReadIOPS", "DBClusterIdentifier", "${DatabaseClusterIdentifier}" ]
+                            ],
+                            "region": "${AWS::Region}",
+                            "title": "Read IOPS"
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 12,
+                        "y": 3,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "view": "timeSeries",
+                            "stacked": false,
+                            "metrics": [
+                                [ "AWS/RDS", "DatabaseConnections", "DBClusterIdentifier", "${DatabaseClusterIdentifier}" ]
+                            ],
+                            "region": "${AWS::Region}",
+                            "title": "Database Connections"
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 18,
+                        "y": 3,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "metrics": [
+                                [ "AWS/RDS", "FreeLocalStorage", "DBClusterIdentifier", "${DatabaseClusterIdentifier}", { "color": "#7f7f7f" } ]
+                            ],
+                            "view": "timeSeries",
+                            "stacked": true,
+                            "region": "${AWS::Region}",
+                            "title": "Free Local Storage",
+                            "stat": "Average",
+                            "period": 300
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 18,
+                        "y": 9,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "metrics": [
+                                [ "AWS/RDS", "Deadlocks", "DBClusterIdentifier", "${DatabaseClusterIdentifier}", { "color": "#d62728" } ]
+                            ],
+                            "view": "timeSeries",
+                            "stacked": false,
+                            "region": "${AWS::Region}",
+                            "title": "Deadlocks",
+                            "stat": "Average",
+                            "period": 300
+                        }
+                    }
+                ]
+            }'
+          - DatabaseClusterIdentifier:
+              Fn::ImportValue: !Sub "${AuroraStackName}-DatabaseClusterIdentifier"
+            DatabaseWriterCPUAlarm:
+              Fn::ImportValue: !Sub "${AuroraStackName}-DatabaseWriterCPUAlarm"
+            DatabaseWriterMemoryAlarm:
+              Fn::ImportValue: !Sub "${AuroraStackName}-DatabaseWriterMemoryAlarm"            
+            DatabaseWriterConnectionsAlarm:
+              Fn::ImportValue: !Sub "${AuroraStackName}-DatabaseWriterConnectionsAlarm"
+            DatabaseReaderCPUAlarm:
+              Fn::ImportValue: !Sub "${AuroraStackName}-DatabaseReaderCPUAlarm"
+            DatabaseReaderMemoryAlarm:
+              Fn::ImportValue: !Sub "${AuroraStackName}-DatabaseReaderMemoryAlarm"
+            DatabaseReaderConnectionsAlarm:
+              Fn::ImportValue: !Sub "${AuroraStackName}-DatabaseReaderConnectionsAlarm"
+            DatabaseReplicationAlarm:
+              Fn::ImportValue: !Sub "${AuroraStackName}-DatabaseReplicationAlarm"
+            DatabaseFreeStorageSpaceAlarm:
+              Fn::ImportValue: !Sub "${AuroraStackName}-DatabaseFreeStorageSpaceAlarm"
+    
+Outputs:
+  Dashboard:
+    Description: 'CloudFront Dashboard'
+    Value:  !Sub 'https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${CloudWatchDashboard}'
+    Export:
+      Name: !Sub '${AWS::StackName}-Dashboard'

@@ -1,0 +1,29 @@
+{
+  "Parameters": {
+    "Env": "prod",
+    "ProjectModuleTag": "/vcis/prod/infra/tags/project-module-value-capture-industry-system",
+    "ITSHostedZone": "is.its-plus.com",
+    "ITSHostedZoneId": "Z00748631X7YJQVF6LK57",
+    "SharedDatabaseNonProdRecordSetName": "shared-database-np",
+    "SharedDatabaseNonProdReadOnlyRecordSetName": "shared-database-ro-np",
+    "MasterdataProdRecordSetName": "shared-database",
+    "PodDatabaseNonProdRecordSetName": "pod-np",
+    "PodDatabaseProdRecordSetName": "pod",
+    "PodDatabaseWriterProdRecordSetName": "pod1",
+    "PodDatabaseProdReaderRecordSetName": "pod-ro",
+    "PodDatabaseProdReadOnlyRecordSetName": "pod-ro1",
+    "ServiceFeeNonProdRecordSetName": "service-fee-np",
+    "ServiceFeeProdRecordSetName": "service-fee",
+    "PodRedisClusterMasterNonProdRecordSetName": "pod-master-np",
+    "PodRedisClusterReplicaNonProdRecordSetName": "pod-replica-np",
+    "PodRedisClusterMasterProdRecordSetName": "pod-master",
+    "PodRedisClusterReplicaProdRecordSetName": "pod-replica",
+    "RdsHostedZone": "rds.vcis.internal",
+    "RedisHostedZone": "redis.vcis.internal",
+    "VpcStackNameDEV": "vcis-vpc-dev",
+    "VpcStackNameIT": "vcis-vpc-it",
+    "VpcStackNamePROD": "vcis-vpc-prod",
+    "TtlValue": "300",
+    "HostedZoneStackName": "vcis-route53-hostedzone"
+  }
+}

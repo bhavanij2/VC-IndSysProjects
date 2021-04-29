@@ -1,0 +1,941 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VCIS API Gateway
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+
+  RestApiName:
+    Type: String
+    Description: 'The API Name (eg: vcis-pod-credit-exemption-balance)'
+
+  RestApiDescription:
+    Type: String
+    Description: Rest API Description
+
+  StageName:
+    Type: String
+    Description: The name of the API Stage. Default is 'release' stage
+    Default: 'release'
+
+  RestApiCustomDomainName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Rest API Custom Domain Name. Default value is 'api.pod-np.its-plus.com' (NonProd) and 'api.pod.its-plus.com' (Prod)
+
+  LambdaAuthorizerStackName:
+    Type: String
+    Description: Stack that exports Lambda Authorizer ARN.
+
+  MinimumCompressionSize:
+    Type: Number
+    Default: 0
+    Description: 'Compression or decompression is not applied on the payload if the payload size is smaller than this value. Setting it to zero allows compression for any payload size.'
+
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+
+Mappings:
+  EnvStageVarMapping:
+    poc:
+      EnvStageVar: 'DEV'
+    dev:
+      EnvStageVar: 'DEV'
+    it:
+      EnvStageVar: 'TEST'
+    prod:
+      EnvStageVar: 'PROD'
+
+Resources:
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${RestApiName}-${Env}'
+      Description: !Ref RestApiDescription
+      ApiKeySourceType: HEADER
+      MinimumCompressionSize: !Ref MinimumCompressionSize
+      EndpointConfiguration:
+        Types:
+          - EDGE
+
+    ## Lambda Authorizer
+  ApiGatewayLambdaAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    DependsOn: RestApi
+    Properties:
+      Name: !Sub 'vcis-pod-ping-authorizer-${Env}'
+      Type: 'REQUEST'
+      AuthorizerResultTtlInSeconds: 0
+      AuthorizerUri: !Join
+        - ''
+        - - 'arn:aws:apigateway:'
+          - !Ref 'AWS::Region'
+          - ':lambda:path/2015-03-31/functions/'
+          - Fn::ImportValue: !Sub "${LambdaAuthorizerStackName}-PodPingAuthorizer"
+          - '/invocations'
+      IdentitySource: 'method.request.header.Authorization'
+      RestApiId: !Ref RestApi
+
+  Deployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+    - PodPath
+    - PodseasonclosingPath
+    - PodseasonclosingexportPath
+    - PodseasonclosingexportxlsxPath
+    - PodseasonclosingexportxlsxfilenamePath
+    - PodseasonclosingexportxlsxfilenamelanguagePath
+    - PodseasonclosingloadPath
+    - PodseasonclosingnonfixedgrowerPath
+    - PodseasonclosingnonfixedgrowerbulkPath
+    - PodseasonclosingnonfixedgrowerbulkstatusPath
+    - PodseasonclosingnonfixedgrowerbulkxlsxPath
+    - PodseasonclosingnonfixedgrowerbulkxlsxbulkidPath
+    - PodseasonclosingnonfixedgrowerdeletePath
+    - PodseasonclosingnonfixedgrowerdeleteyearPath
+    - PodseasonclosingnonfixedgrowerdeleteyearpodheadofficedocumentPath
+    - PodseasonclosingnonfixedgrowerreportPath
+    - PodseasonclosingnonfixedgrowerreportxlsxPath
+    - PodseasonclosingnonfixedgrowerreportxlsxfilenamePath
+    - PodseasonclosingnonfixedgrowerreportxlsxfilenamelanguagePath
+    - PodseasonclosingnonfixedgroweridPath
+    - PodseasonclosingsavePath
+    - PodseasonclosingsubmitPath
+    - PodseasonclosingworkflowPath
+    - PodseasonclosingworkflowapprovePath
+    - PodseasonclosingworkflowrejectPath
+    - PodseasonclosingidPath
+    - PodseasonclosingidnonfixedgrowerPath
+    - PodseasonclosingidnonfixedgrowernonFixedGrowerIdPath
+    - PodseasonclosingexportxlsxfilenamelanguageOptionsMethod
+    - PodseasonclosingloadOptionsMethod
+    - PodseasonclosingnonfixedgrowerOptionsMethod
+    - PodseasonclosingnonfixedgrowerbulkstatusOptionsMethod
+    - PodseasonclosingnonfixedgrowerbulkxlsxbulkidOptionsMethod
+    - PodseasonclosingnonfixedgrowerdeleteyearpodheadofficedocumentOptionsMethod
+    - PodseasonclosingnonfixedgrowerreportxlsxfilenamelanguageOptionsMethod
+    - PodseasonclosingnonfixedgroweridOptionsMethod
+    - PodseasonclosingsaveOptionsMethod
+    - PodseasonclosingsubmitOptionsMethod
+    - PodseasonclosingworkflowOptionsMethod
+    - PodseasonclosingworkflowapproveOptionsMethod
+    - PodseasonclosingworkflowrejectOptionsMethod
+    - PodseasonclosingidOptionsMethod
+    - PodseasonclosingidnonfixedgrowernonFixedGrowerIdOptionsMethod
+    Properties:
+      Description: API Deployment
+      RestApiId: !Ref RestApi
+
+  Stage:
+    Type: AWS::ApiGateway::Stage
+    DependsOn: Deployment
+    Properties:
+      RestApiId: !Ref RestApi
+      DeploymentId: !Ref Deployment
+      StageName: !Ref StageName
+      Variables:
+        environment: !FindInMap [EnvStageVarMapping, !Ref Env, EnvStageVar]
+
+  ApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    DependsOn: Stage
+    Properties:
+      DomainName: !Ref RestApiCustomDomainName
+      BasePath: !Sub '${RestApiName}-${Env}'
+      RestApiId: !Ref RestApi
+      Stage: !Ref Stage
+
+  PodPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !GetAtt RestApi.RootResourceId
+      PathPart: "pod"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodPath
+      PathPart: "season-closing"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingexportPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingPath
+      PathPart: "export"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingexportxlsxPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingexportPath
+      PathPart: "xlsx"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingexportxlsxfilenamePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingexportxlsxPath
+      PathPart: "{filename}"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingexportxlsxfilenamelanguagePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingexportxlsxfilenamePath
+      PathPart: "{language}"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingexportxlsxfilenamelanguageOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodseasonclosingexportxlsxfilenamelanguagePath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodseasonclosingloadPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingPath
+      PathPart: "load"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingloadOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodseasonclosingloadPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodseasonclosingnonfixedgrowerPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingPath
+      PathPart: "non-fixed-grower"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingnonfixedgrowerOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodseasonclosingnonfixedgrowerPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodseasonclosingnonfixedgrowerbulkPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingnonfixedgrowerPath
+      PathPart: "bulk"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingnonfixedgrowerbulkstatusPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingnonfixedgrowerbulkPath
+      PathPart: "status"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingnonfixedgrowerbulkstatusOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodseasonclosingnonfixedgrowerbulkstatusPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodseasonclosingnonfixedgrowerbulkxlsxPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingnonfixedgrowerbulkPath
+      PathPart: "xlsx"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingnonfixedgrowerbulkxlsxbulkidPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingnonfixedgrowerbulkxlsxPath
+      PathPart: "{bulkid}"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingnonfixedgrowerbulkxlsxbulkidOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodseasonclosingnonfixedgrowerbulkxlsxbulkidPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodseasonclosingnonfixedgrowerdeletePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingnonfixedgrowerPath
+      PathPart: "delete"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingnonfixedgrowerdeleteyearPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingnonfixedgrowerdeletePath
+      PathPart: "{year}"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingnonfixedgrowerdeleteyearpodheadofficedocumentPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingnonfixedgrowerdeleteyearPath
+      PathPart: "{podheadofficedocument}"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingnonfixedgrowerdeleteyearpodheadofficedocumentOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodseasonclosingnonfixedgrowerdeleteyearpodheadofficedocumentPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodseasonclosingnonfixedgrowerreportPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingnonfixedgrowerPath
+      PathPart: "report"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingnonfixedgrowerreportxlsxPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingnonfixedgrowerreportPath
+      PathPart: "xlsx"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingnonfixedgrowerreportxlsxfilenamePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingnonfixedgrowerreportxlsxPath
+      PathPart: "{filename}"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingnonfixedgrowerreportxlsxfilenamelanguagePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingnonfixedgrowerreportxlsxfilenamePath
+      PathPart: "{language}"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingnonfixedgrowerreportxlsxfilenamelanguageOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodseasonclosingnonfixedgrowerreportxlsxfilenamelanguagePath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodseasonclosingnonfixedgroweridPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingnonfixedgrowerPath
+      PathPart: "{id}"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingnonfixedgroweridOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodseasonclosingnonfixedgroweridPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodseasonclosingsavePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingPath
+      PathPart: "save"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingsaveOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodseasonclosingsavePath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodseasonclosingsubmitPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingPath
+      PathPart: "submit"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingsubmitOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodseasonclosingsubmitPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodseasonclosingworkflowPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingPath
+      PathPart: "workflow"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingworkflowOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodseasonclosingworkflowPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodseasonclosingworkflowapprovePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingworkflowPath
+      PathPart: "approve"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingworkflowapproveOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodseasonclosingworkflowapprovePath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodseasonclosingworkflowrejectPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingworkflowPath
+      PathPart: "reject"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingworkflowrejectOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodseasonclosingworkflowrejectPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodseasonclosingidPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingPath
+      PathPart: "{id}"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingidOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodseasonclosingidPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodseasonclosingidnonfixedgrowerPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingidPath
+      PathPart: "non-fixed-grower"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingidnonfixedgrowernonFixedGrowerIdPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodseasonclosingidnonfixedgrowerPath
+      PathPart: "{nonFixedGrowerId}"
+      RestApiId: !Ref RestApi
+
+  PodseasonclosingidnonfixedgrowernonFixedGrowerIdOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodseasonclosingidnonfixedgrowernonFixedGrowerIdPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+
+Outputs:
+  Endpoint:
+    Description: Rest Api Endpoint URL
+    Value: !Sub 'https://${RestApiName}-${Env}.execute-api.${AWS::Region}.amazonaws.com'
+
+  RestApiGatewayId:
+    Description: ApiGatewayId
+    Value: !Ref RestApi
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayId'
+
+  RootResourceId:
+    Description: RootResourceId
+    Value: !GetAtt RestApi.RootResourceId
+    Export:
+      Name: !Sub '${AWS::StackName}-RootResourceId'
+
+  LambdaAuthorizerId:
+    Description: LambdaAuthorizerId
+    Value: !Ref ApiGatewayLambdaAuthorizer
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaAuthorizerId'
+
+  PodPath:
+    Value: !Ref PodPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodPath'
+  PodseasonclosingPath:
+    Value: !Ref PodseasonclosingPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingPath'
+  PodseasonclosingexportPath:
+    Value: !Ref PodseasonclosingexportPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingexportPath'
+  PodseasonclosingexportxlsxPath:
+    Value: !Ref PodseasonclosingexportxlsxPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingexportxlsxPath'
+  PodseasonclosingexportxlsxfilenamePath:
+    Value: !Ref PodseasonclosingexportxlsxfilenamePath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingexportxlsxfilenamePath'
+  PodseasonclosingexportxlsxfilenamelanguagePath:
+    Value: !Ref PodseasonclosingexportxlsxfilenamelanguagePath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingexportxlsxfilenamelanguagePath'
+  PodseasonclosingloadPath:
+    Value: !Ref PodseasonclosingloadPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingloadPath'
+  PodseasonclosingnonfixedgrowerPath:
+    Value: !Ref PodseasonclosingnonfixedgrowerPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingnonfixedgrowerPath'
+  PodseasonclosingnonfixedgrowerbulkPath:
+    Value: !Ref PodseasonclosingnonfixedgrowerbulkPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingnonfixedgrowerbulkPath'
+  PodseasonclosingnonfixedgrowerbulkstatusPath:
+    Value: !Ref PodseasonclosingnonfixedgrowerbulkstatusPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingnonfixedgrowerbulkstatusPath'
+  PodseasonclosingnonfixedgrowerbulkxlsxPath:
+    Value: !Ref PodseasonclosingnonfixedgrowerbulkxlsxPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingnonfixedgrowerbulkxlsxPath'
+  PodseasonclosingnonfixedgrowerbulkxlsxbulkidPath:
+    Value: !Ref PodseasonclosingnonfixedgrowerbulkxlsxbulkidPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingnonfixedgrowerbulkxlsxbulkidPath'
+  PodseasonclosingnonfixedgrowerdeletePath:
+    Value: !Ref PodseasonclosingnonfixedgrowerdeletePath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingnonfixedgrowerdeletePath'
+  PodseasonclosingnonfixedgrowerdeleteyearPath:
+    Value: !Ref PodseasonclosingnonfixedgrowerdeleteyearPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingnonfixedgrowerdeleteyearPath'
+  PodseasonclosingnonfixedgrowerdeleteyearpodheadofficedocumentPath:
+    Value: !Ref PodseasonclosingnonfixedgrowerdeleteyearpodheadofficedocumentPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingnonfixedgrowerdeleteyearpodheadofficedocumentPath'
+  PodseasonclosingnonfixedgrowerreportPath:
+    Value: !Ref PodseasonclosingnonfixedgrowerreportPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingnonfixedgrowerreportPath'
+  PodseasonclosingnonfixedgrowerreportxlsxPath:
+    Value: !Ref PodseasonclosingnonfixedgrowerreportxlsxPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingnonfixedgrowerreportxlsxPath'
+  PodseasonclosingnonfixedgrowerreportxlsxfilenamePath:
+    Value: !Ref PodseasonclosingnonfixedgrowerreportxlsxfilenamePath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingnonfixedgrowerreportxlsxfilenamePath'
+  PodseasonclosingnonfixedgrowerreportxlsxfilenamelanguagePath:
+    Value: !Ref PodseasonclosingnonfixedgrowerreportxlsxfilenamelanguagePath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingnonfixedgrowerreportxlsxfilenamelanguagePath'
+  PodseasonclosingnonfixedgroweridPath:
+    Value: !Ref PodseasonclosingnonfixedgroweridPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingnonfixedgroweridPath'
+  PodseasonclosingsavePath:
+    Value: !Ref PodseasonclosingsavePath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingsavePath'
+  PodseasonclosingsubmitPath:
+    Value: !Ref PodseasonclosingsubmitPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingsubmitPath'
+  PodseasonclosingworkflowPath:
+    Value: !Ref PodseasonclosingworkflowPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingworkflowPath'
+  PodseasonclosingworkflowapprovePath:
+    Value: !Ref PodseasonclosingworkflowapprovePath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingworkflowapprovePath'
+  PodseasonclosingworkflowrejectPath:
+    Value: !Ref PodseasonclosingworkflowrejectPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingworkflowrejectPath'
+  PodseasonclosingidPath:
+    Value: !Ref PodseasonclosingidPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingidPath'
+  PodseasonclosingidnonfixedgrowerPath:
+    Value: !Ref PodseasonclosingidnonfixedgrowerPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingidnonfixedgrowerPath'
+  PodseasonclosingidnonfixedgrowernonFixedGrowerIdPath:
+    Value: !Ref PodseasonclosingidnonfixedgrowernonFixedGrowerIdPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodseasonclosingidnonfixedgrowernonFixedGrowerIdPath'

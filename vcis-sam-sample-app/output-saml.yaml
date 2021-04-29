@@ -1,0 +1,216 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'vcis-sam-sample-app Sample SAM Template for vcis-sam-sample-app
+
+  '
+Parameters:
+  Stage:
+    Description: Stage
+    Type: String
+    AllowedValues:
+    - DEV
+    - TEST
+    - PROD
+    Default: DEV
+  FunctionName:
+    Description: 'Function Name. Stage will be added to the name: {FunctionName}-{Stage}'
+    Type: String
+    Default: vcis-app-sam-sample-app
+  Timeout:
+    Description: Timeout [s]
+    Type: Number
+    Default: 60
+  MemorySize:
+    Description: Memory Size [MB]
+    Type: Number
+    Default: 128
+  AccountLevelResourcesStackName:
+    Description: Account Level Resources Stack Name
+    Type: String
+    Default: vcis-app-non-prod-account-level-resources
+  ApiGwStackName:
+    Description: API Gateway Stack name
+    Type: String
+    Default: vcis-app-dev-infra-pipeline-apigw-balance-extract
+Resources:
+  HelloWorldFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: ${FunctionName}-${Stage}
+      CodeUri: s3://vcis-test-one/ff5e7565dd15009fc145f1ff2ad05b3e
+      Handler: app.lambdaHandler
+      Runtime: nodejs8.10
+      Environment:
+        Variables:
+          STAGE:
+            Ref: Stage
+          REGION:
+            Ref: AWS::Region
+          LOG_GROUP:
+            Fn::ImportValue:
+              Fn::Sub: ${AccountLevelResourcesStackName}-LannisterLogGroup
+      Timeout:
+        Ref: Timeout
+      MemorySize:
+        Ref: MemorySize
+      Policies:
+      - VPCAccessPolicy: {}
+      - Statement:
+        - Effect: Allow
+          Action:
+          - logs:DescribeLogStreams
+          Resource:
+            Fn::Join:
+            - ''
+            - - Fn::Sub: 'arn:aws:logs:*:${AWS::AccountId}:log-group:'
+              - Fn::ImportValue:
+                  Fn::Sub: ${AccountLevelResourcesStackName}-LannisterLogGroup
+              - :log-stream:*
+      - Statement:
+        - Effect: Allow
+          Action: iam:*
+          Resource: '*'
+      PermissionsBoundary:
+        Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/standard-permissions-boundary
+  HelloWorldFunction2:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: ${FunctionName}2-${Stage}
+      CodeUri: s3://vcis-test-one/ff5e7565dd15009fc145f1ff2ad05b3e
+      Handler: app.lambdaHandler2
+      Runtime: nodejs8.10
+      Environment:
+        Variables:
+          STAGE:
+            Ref: Stage
+          REGION:
+            Ref: AWS::Region
+          LOG_GROUP:
+            Fn::ImportValue:
+              Fn::Sub: ${AccountLevelResourcesStackName}-LannisterLogGroup
+      Timeout:
+        Ref: Timeout
+      MemorySize:
+        Ref: MemorySize
+      Policies:
+      - VPCAccessPolicy: {}
+      - Statement:
+        - Effect: Allow
+          Action:
+          - logs:DescribeLogStreams
+          Resource:
+            Fn::Join:
+            - ''
+            - - Fn::Sub: 'arn:aws:logs:*:${AWS::AccountId}:log-group:'
+              - Fn::ImportValue:
+                  Fn::Sub: ${AccountLevelResourcesStackName}-LannisterLogGroup
+              - :log-stream:*
+      - Statement:
+        - Effect: Allow
+          Action: iam:*
+          Resource: '*'
+      PermissionsBoundary:
+        Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/standard-permissions-boundary
+  LambdaAlias:
+    Type: AWS::Lambda::Alias
+    Properties:
+      FunctionName:
+        Ref: HelloWorldFunction
+      FunctionVersion: $LATEST
+      Name:
+        Ref: Stage
+  Permission:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+    - LambdaAlias
+    - HelloWorldFunction
+    Properties:
+      FunctionName:
+        Fn::Sub: ${HelloWorldFunction}:${Stage}
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+        - ''
+        - - Fn::Sub: 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:'
+          - Fn::ImportValue:
+              Fn::Sub: ${ApiGwStackName}-ApiGatewayId
+          - /*/*/*
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+    - ApiGatewayMethodHelloGet
+    - ApiGatewayMethodHelloOptions
+    Properties:
+      Description:
+        Fn::Sub: ${FunctionName}
+      RestApiId:
+        Fn::ImportValue:
+          Fn::Sub: ${ApiGwStackName}-ApiGatewayId
+  ApiGatewayResourceHello:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId:
+        Fn::ImportValue:
+          Fn::Sub: ${ApiGwStackName}-RootResourceId
+      PathPart: hello
+      RestApiId:
+        Fn::ImportValue:
+          Fn::Sub: ${ApiGwStackName}-ApiGatewayId
+  ApiGatewayMethodHelloGet:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: GET
+      Integration:
+        IntegrationHttpMethod: POST
+        PassthroughBehavior: WHEN_NO_MATCH
+        Type: AWS_PROXY
+        Uri:
+          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${HelloWorldFunction.Arn}:${Stage}/invocations
+      OperationName: lambda
+      ResourceId:
+        Ref: ApiGatewayResourceHello
+      RestApiId:
+        Fn::ImportValue:
+          Fn::Sub: ${ApiGwStackName}-ApiGatewayId
+  ApiGatewayMethodHelloOptions:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId:
+        Fn::ImportValue:
+          Fn::Sub: ${ApiGwStackName}-ApiGatewayId
+      ResourceId:
+        Ref: ApiGatewayResourceHello
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
+            method.response.header.Access-Control-Allow-Methods: '''GET,OPTIONS'''
+            method.response.header.Access-Control-Allow-Origin: '''*'''
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: Empty
+        ResponseParameters:
+          method.response.header.Access-Control-Allow-Headers: false
+          method.response.header.Access-Control-Allow-Methods: false
+          method.response.header.Access-Control-Allow-Origin: false
+Outputs:
+  HelloWorldFunctionOutput:
+    Description: Hello World Lambda Function ARN
+    Value:
+      Fn::GetAtt:
+      - HelloWorldFunction
+      - Arn

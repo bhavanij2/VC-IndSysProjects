@@ -1,0 +1,5 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var vcis_vpc_stack_1 = require("./vcis-vpc-stack");
+exports.VcisVpcStack = vcis_vpc_stack_1.VcisVpcStack;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOztBQUFBLG1EQUFnRDtBQUF2Qyx3Q0FBQSxZQUFZLENBQUEiLCJzb3VyY2VzQ29udGVudCI6WyJleHBvcnQgeyBWY2lzVnBjU3RhY2sgfSBmcm9tICcuL3ZjaXMtdnBjLXN0YWNrJztcbmV4cG9ydCB7IFZjaXNWcGNTdGFja091dHB1dCB9IGZyb20gJy4vdmNpcy12cGMtc3RhY2snOyJdfQ==

@@ -1,0 +1,26 @@
+[
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "{{API_NAME}}-{{ENV}}"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "{{ENV}}"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/{{ENV}}/infra/tags/project-module-pod"
+  },
+  {
+    "ParameterKey": "TemplateFileName",
+    "ParameterValue": "/vcis/{{ENV}}/infra/code-deploy/vcis-api-gateway-rest-api-template"
+  },
+  {
+    "ParameterKey": "ConfigPath",
+    "ParameterValue": "/vcis/{{ENV}}/infra/code-deploy/{{API_NAME}}-config-path"
+  },
+  {
+    "ParameterKey": "CustomTags",
+    "CustomTags": "{{TAGS}}"
+  }
+]

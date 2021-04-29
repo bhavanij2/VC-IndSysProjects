@@ -1,0 +1,26 @@
+[
+  {
+    "ParameterKey": "S3SourceKey",
+    "ParameterValue": "vcis-sam-sample-app-poc"
+  },
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "sam-sample-app"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "poc"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/poc/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "AppAccountLevelResourcesStackName",
+    "ParameterValue": "vcis-app-non-prod-account-level-resources"
+  },
+  {
+    "ParameterKey": "ApprovalNotificationsStackName",
+    "ParameterValue": "vvcis-prod-app-approvals-slack-notifier"
+  }
+]

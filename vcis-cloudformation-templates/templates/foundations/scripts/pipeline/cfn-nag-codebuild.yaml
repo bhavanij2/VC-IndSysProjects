@@ -1,0 +1,101 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Automate provisioning of CodeBuild with CodePipeline
+Parameters:
+    GHERepoURL:
+        Type: String
+        Default: "https://github.platforms.engineering/POD-Inc/vcis-cloudformation-templates.git"
+    BuildOutputName:
+        Type: String
+        Default: "build-o"
+    SourceS3Bucket:
+        Type: 'AWS::SSM::Parameter::Value<String>'
+        Default: "/vcis/common/infra/cicd/source-bucket"
+
+Resources:
+    CodeBuildProject:
+        Type: AWS::CodeBuild::Project
+        DependsOn:
+            - CodeBuildServiceRole
+        Properties:
+            Description: 'Run cfn-nag test on templates'
+            BadgeEnabled: true
+            ServiceRole: !Ref 'CodeBuildServiceRole'
+            Environment:
+                ComputeType: BUILD_GENERAL1_SMALL
+                Image: aws/codebuild/standard:2.0
+                Type: LINUX_CONTAINER
+            Source:
+                Type: GITHUB_ENTERPRISE
+                Location: !Ref 'GHERepoURL'
+                ReportBuildStatus: true
+                BuildSpec: |
+                    version: 0.2
+                    phases:
+                        install:
+                            runtime-versions:
+                                nodejs: 10
+                        build:
+                           commands:
+                             - git diff-tree --no-commit-id --name-only -r ${CODEBUILD_RESOLVED_SOURCE_VERSION} >> changed_files.txt
+                             - ls -al
+                             - gem install cfn-nag
+                             - cat changed_files.txt
+                             - |
+                               if cat changed_files.txt | grep '^template.*yaml$'
+                               then
+                                  echo "found template"
+                                  cat changed_files.txt | grep '^template.*yaml$' >> template_list.txt
+                                  for file in $(cat template_list.txt); do cfn_nag_scan --input-path $file; done
+                               else
+                                  echo "Template not found"
+                               fi
+                    artifacts:
+                        files:
+                            - '**/*'
+            SourceVersion: 'pr/61'
+            Artifacts:
+                Type: no_artifacts
+            LogsConfig:
+                CloudWatchLogs:
+                    GroupName: vcis-cfn-nag
+                    Status: ENABLED
+
+    CodeBuildServiceRole:
+        Type: AWS::IAM::Role
+        Properties:
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                    Effect: Allow
+                    Principal:
+                        Service: codebuild.amazonaws.com
+                    Action: sts:AssumeRole
+            ManagedPolicyArns:
+                - !Ref CodeBuildPolicy
+
+    CodeBuildPolicy:
+        Type: AWS::IAM::ManagedPolicy
+        Properties:
+          Description: "Policy for access to logs and S3 Buckets"
+          Path: "/"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            - Sid: BucketAccessPolicy
+              Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+                - s3:GetObjectVersion
+                - s3:GetBucketVersioning
+              Resource:
+                - !Sub arn:aws:s3:::${SourceS3Bucket}
+                - !Sub arn:aws:s3:::${SourceS3Bucket}/*
+            - Sid: LogsPolicy
+              Effect: Allow
+              Action:
+                - logs:CreateLogStream
+                - logs:CreateLogGroup
+                - logs:PutLogEvents
+              Resource:
+                - !Sub 'arn:aws:logs::${AWS::AccountId}:log-group:vcis-cfn-nag'

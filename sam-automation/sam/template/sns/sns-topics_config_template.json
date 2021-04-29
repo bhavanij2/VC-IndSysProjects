@@ -1,0 +1,7 @@
+{
+  "Parameters" : {
+    "Env": "{{ENV}}",
+    "ProjectModuleTag": "/vcis/{{ENV}}/infra/tags/project-module-pod",
+    "KMS": "/vcis/{{ENV}}/app/kms/sharedAccount"
+  }
+}

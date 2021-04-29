@@ -1,0 +1,34 @@
+[
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "vcis-app-sam-sample-app-two-event-sources"
+  },
+  {
+    "ParameterKey": "S3Source",
+    "ParameterValue": "vcis-sam-sample-app-two"
+  },
+  {
+    "ParameterKey": "TemplateFileName",
+    "ParameterValue": "templates/resources.yaml"
+  },
+  {
+    "ParameterKey": "ConfigPath",
+    "ParameterValue": "templates/config/dev"
+  },
+  {
+    "ParameterKey": "AppAccountLevelResourcesStackName",
+    "ParameterValue": "vcis-app-non-prod-account-level-resources"
+  },
+  {
+    "ParameterKey": "ApprovalNotificationsStackName",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/dev/infra/tags/project-module-pod"
+  }
+]

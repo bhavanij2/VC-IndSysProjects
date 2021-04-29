@@ -1,0 +1,26 @@
+[
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "vcis-app-apigw-location"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "it"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/it/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "TemplateFileName",
+    "ParameterValue": "templates/features/location/rest-api/vcis-app-apigw-location/resources.yaml"
+  },
+  {
+    "ParameterKey": "ConfigPath",
+    "ParameterValue": "templates/features/location/rest-api/vcis-app-apigw-location/config/it"
+  },
+  {
+    "ParameterKey": "AppAccountLevelResourcesStackName",
+    "ParameterValue": "vcis-app-non-prod-account-level-resources"
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "Parameters" : {
+    "Env": "poc",
+    "ProjectModuleTag": "/vcis/poc/infra/tags/project-module-value-capture-industry-system",
+    "VpcCidrBlock": "/vcis/poc/infra/vpc/cidr-block",
+    "PublicSubnets": "/vcis/poc/infra/vpc/public-cidr-blocks",
+    "PrivateSubnets": "/vcis/poc/infra/vpc/private-cidr-blocks",
+    "RdsSubnets": "/vcis/poc/infra/vpc/rds-cidr-blocks",
+    "BastionInstanceType": "/vcis/poc/infra/vpc/bastion-instance-type",
+    "BastionHostKeyName": "/vcis/poc/infra/vpc/bastion-keypair",
+    "BastionIps": "/vcis/poc/infra/vpc/central-bastion-ips",
+    "InfraOpsSlackNotifierStackName": "vcis-poc-ops-infra-slack-notifier"
+  }
+}

@@ -1,0 +1,85 @@
+Transform: ['AWS::Serverless-2016-10-31', VcisCommonTagsMacro]
+Parameters:
+  Env:
+    Description: >-
+      A value used to describe the environment you will deploy to. This value will be used to get values
+      from SSM Parameter Store. Keys in Parameter store should begin with: /vcis/environment.
+    Type: String
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+      - non-prod
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+  Timeout:
+    Description: "Lambda Timeout [s]"
+    Type: Number
+    Default: 10
+  MemorySize:
+    Description: "Lambda Memory Size [MB]"
+    Type: Number
+    Default: 128
+  WebhookSSMParameterName:
+    Description: "SSM parameter name containing the Slack Channel Webhook"
+    Type: String
+  FunctionName:
+    Description: "Function Name. Stage will be added to the name: {FunctionName}-{Stage}"
+    Type: String
+
+Resources:
+  LogProccesor:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: ${FunctionName}-${Env}
+      Handler: lambda.handler
+      Runtime: nodejs12.x
+      CodeUri: ./
+      Environment:
+        Variables:
+          SLACK_WEBHOOK_SSM:
+            Ref: WebhookSSMParameterName
+          REGION:
+            Ref: AWS::Region
+      Timeout:
+        Ref: Timeout
+      MemorySize:
+        Ref: MemorySize
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - 'ssm:GetParameter'
+              Resource:
+                Fn::Sub: arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${WebhookSSMParameterName}
+      PermissionsBoundary:
+        Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/standard-permissions-boundary
+
+  #SNS topic to notify the alarms
+  SlackTopicNotifier:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Endpoint:
+            Fn::GetAtt: LogProccesor.Arn
+          Protocol: lambda
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn:
+        Ref: SlackTopicNotifier
+      FunctionName:
+        Ref: LogProccesor
+
+Outputs:
+  SNSTopicARN:
+    Description: ARN of SNS Slack Notification Topic
+    Value: !Ref SlackTopicNotifier
+    Export:
+      Name: !Sub '${AWS::StackName}-SNSTopicArn'

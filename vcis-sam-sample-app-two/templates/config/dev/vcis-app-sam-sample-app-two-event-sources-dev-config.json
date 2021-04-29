@@ -1,0 +1,7 @@
+{
+  "Parameters": {
+    "Env": "dev",
+    "ProjectModuleTag": "/vcis/dev/infra/tags/project-module-pod",
+    "SAMSampleAppTwoSQSName": "vcis-app-sam-sample-app-two-sqs"
+  }
+}

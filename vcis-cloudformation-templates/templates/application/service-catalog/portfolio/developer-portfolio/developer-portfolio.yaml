@@ -1,0 +1,146 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  AWS CloudFormation Template For Service Catalog Portfolio
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Description: 'Environment in which resources should be deployed'
+    Type: String
+    AllowedValues:
+      - non-prod
+      - prod
+    ConstraintDescription: Must be either non-prod or prod
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  SAMCiCdPipelineProductStackName:
+    Description: Stack Name exporting SAM CI-CD Pipeline Service Catalog Product
+    Type: String
+
+  AppInfraCiCdPipelineProductStackName:
+    Description: Stack Name exporting Application Infrastructure CI-CD Pipeline Service Catalog Product
+    Type: String
+
+  UiCiCdPipelineProductStackName:
+    Description: Stack Name exporting UI CI-CD Pipeline Service Catalog Product
+    Type: String  
+
+  IAMStackName:
+    Description: IAM Stack Name exporting Role ARNs
+    Type: String
+
+Resources:
+  DeveloperProductsPortfolio:
+    Type: AWS::ServiceCatalog::Portfolio
+    Properties:
+      DisplayName: 'VCIS Developer Products'
+      Description: 'Product Templates used by VCIS Developers'
+      ProviderName: 'VCIS Cloud Admin'
+
+
+# Associate Role to Portfolio
+  DeveloperRoleToPortfolioAssociation:
+    DependsOn:
+      - DeveloperProductsPortfolio
+    Type: AWS::ServiceCatalog::PortfolioPrincipalAssociation
+    Properties:
+      PortfolioId: !Ref DeveloperProductsPortfolio
+      PrincipalARN:
+        Fn::ImportValue: !Sub '${IAMStackName}-VcisDeveloperRoleArn'
+      PrincipalType: 'IAM'
+
+#### SAMCiCdPipelineProduct ########
+
+# Associate SAMCiCdPipelineProduct to Portfolio
+  SAMCiCdPipelineProductToPortfolioAssociation:
+    DependsOn:
+      - DeveloperProductsPortfolio
+    Type: AWS::ServiceCatalog::PortfolioProductAssociation
+    Properties:
+      PortfolioId: !Ref DeveloperProductsPortfolio
+      ProductId:
+        Fn::ImportValue: !Sub '${SAMCiCdPipelineProductStackName}-SAMCiCdPipelineProductId'
+
+# Launch Role Constraints for SAMCiCdPipelineProduct
+  SAMCiCdPipelineProductLaunchRoleConstraint:
+    DependsOn:
+      - DeveloperProductsPortfolio
+      - SAMCiCdPipelineProductToPortfolioAssociation
+    Type: AWS::ServiceCatalog::LaunchRoleConstraint
+    Properties:
+      Description: 'Provision this product using vcis-service-catalog-role with required elevated permissions'
+      PortfolioId: !Ref DeveloperProductsPortfolio
+      ProductId:
+        Fn::ImportValue: !Sub '${SAMCiCdPipelineProductStackName}-SAMCiCdPipelineProductId'
+      RoleArn:
+        Fn::ImportValue: !Sub '${IAMStackName}-VcisServiceCatalogRoleArn'
+
+
+#### AppInfraCiCdPipelineProduct ########
+
+# Associate AppInfraCiCdPipelineProduct to Portfolio
+  AppInfraCiCdPipelineProductToPortfolioAssociation:
+    DependsOn:
+      - DeveloperProductsPortfolio
+    Type: AWS::ServiceCatalog::PortfolioProductAssociation
+    Properties:
+      PortfolioId: !Ref DeveloperProductsPortfolio
+      ProductId:
+        Fn::ImportValue: !Sub '${AppInfraCiCdPipelineProductStackName}-AppInfraCiCdPipelineProductId'
+
+
+# Launch Role Constraints for AppInfraCiCdPipelineProduct
+  AppInfraCiCdPipelineProductLaunchRoleConstraint:
+    DependsOn:
+      - DeveloperProductsPortfolio
+      - AppInfraCiCdPipelineProductToPortfolioAssociation
+    Type: AWS::ServiceCatalog::LaunchRoleConstraint
+    Properties:
+      Description: 'Provision this product using vcis-service-catalog-role with required elevated permissions'
+      PortfolioId: !Ref DeveloperProductsPortfolio
+      ProductId:
+        Fn::ImportValue: !Sub '${AppInfraCiCdPipelineProductStackName}-AppInfraCiCdPipelineProductId'
+      RoleArn:
+        Fn::ImportValue: !Sub '${IAMStackName}-VcisServiceCatalogRoleArn'
+
+#### UiCiCdPipelineProduct ########
+
+# Associate UiCiCdPipelineProduct to Portfolio
+  UiCiCdPipelineProductToPortfolioAssociation:
+    DependsOn:
+      - DeveloperProductsPortfolio
+    Type: AWS::ServiceCatalog::PortfolioProductAssociation
+    Properties:
+      PortfolioId: !Ref DeveloperProductsPortfolio
+      ProductId:
+        Fn::ImportValue: !Sub '${UiCiCdPipelineProductStackName}-UiCiCdPipelineProductId'
+
+# Launch Role Constraints for UiCiCdPipelineProduct
+  UiCiCdPipelineProductLaunchRoleConstraint:
+    DependsOn:
+      - DeveloperProductsPortfolio
+      - UiCiCdPipelineProductToPortfolioAssociation
+    Type: AWS::ServiceCatalog::LaunchRoleConstraint
+    Properties:
+      Description: 'Provision this product using vcis-service-catalog-role with required elevated permissions'
+      PortfolioId: !Ref DeveloperProductsPortfolio
+      ProductId:
+        Fn::ImportValue: !Sub '${UiCiCdPipelineProductStackName}-UiCiCdPipelineProductId'
+      RoleArn:
+        Fn::ImportValue: !Sub '${IAMStackName}-VcisServiceCatalogRoleArn'
+
+Outputs:
+  DeveloperProductsPortfolioId:
+    Description: 'Developer Products Portfolio ID'
+    Value: !Ref DeveloperProductsPortfolio
+    Export:
+      Name: !Sub '${AWS::StackName}-DeveloperProductsPortfolioId'
+
+
+
+

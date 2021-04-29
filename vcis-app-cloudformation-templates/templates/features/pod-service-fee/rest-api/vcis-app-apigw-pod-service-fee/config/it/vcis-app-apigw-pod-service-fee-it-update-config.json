@@ -1,0 +1,11 @@
+{
+  "Parameters" : {
+    "Env": "it",
+    "RestApiName" : "vcis-app-apigw-pod-service-fee_update",
+    "RestApiDescription" : "POD Service Fee API",
+    "LambdaAuthorizerARN" : "/vcis/non-prod/infra/lambda-authorizer/arn",
+    "RestApiCustomDomainName" : "/vcis/non-prod/infra/rest-api-domain/name",
+    "ProjectModuleTag": "/vcis/it/infra/tags/project-module-value-capture-industry-system",
+    "CustomTags": "Key=mon:feature,Value=service-fee,Key=mon:team,Value=whitewalkers,Key=mon:application,Value=Industry System,Key=mon:module,Value=pod"
+  }
+}

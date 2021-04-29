@@ -1,0 +1,69 @@
+Transform: [VcisCommonTagsMacro]
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+  KMS:
+      Description: "SSM Parameter Name containing KMS Arn for decrypting keys"
+      Type: AWS::SSM::Parameter::Value<String>
+  ProjectModuleTag:
+      Type: AWS::SSM::Parameter::Value<String>
+      Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+  ServiceFeeConsolidatedStatusUpdateSQSName:
+    Type: String
+    Description: ServiceFeeConsolidatedStatusUpdateSQSName description
+
+Resources:
+  ServiceFeeConsolidatedStatusUpdateSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 1209600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 300
+      QueueName: !Join
+        - ''
+        - - !Ref ServiceFeeConsolidatedStatusUpdateSQSName
+          - '-'
+          - !Ref Env
+
+  ServiceFeeConsolidatedStatusUpdateSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt ServiceFeeConsolidatedStatusUpdateSQS.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ServiceFeeConsolidatedStatusUpdateSQS.Arn
+      Queues:
+        - !Ref ServiceFeeConsolidatedStatusUpdateSQS
+    DependsOn:
+      - ServiceFeeConsolidatedStatusUpdateSQS
+
+  ServiceFeeLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: vcis-app-pod-service-fee
+      RetentionInDays: 365
+
+Outputs:
+  ServiceFeeConsolidatedStatusUpdateSQSOutput:
+    Description: "ServiceFeeConsolidatedStatusUpdateSQS"
+    Value: !Ref ServiceFeeConsolidatedStatusUpdateSQS
+    Export:
+      Name: !Sub '${AWS::StackName}-ServiceFeeConsolidatedStatusUpdateSQS'

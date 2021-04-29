@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VCIS ECS Fargate Cluster'
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+Resources:
+  Cluster:
+    Type: 'AWS::ECS::Cluster'
+  ClusterNameSsmParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value:
+        Ref: Cluster
+      Description: 'ECS Cluster Name; required to create ECS services in the referenced cluster'
+      Name: !Sub '/vcis/${Env}/infra/ecs/output/cluster-name'
+
+Outputs:
+  ECSCluster:
+    Description: 'ECS Fargate Cluster'
+    Value: !Ref Cluster
+    Export:
+      Name: !Sub '${AWS::StackName}-Cluster'
+  StackName:
+    Description: 'Stack name.'
+    Value: !Sub '${AWS::StackName}'
+  ECSClusterSsmParam:
+    Description: 'ECS Fargate Cluster - SSM Param'
+    Value: !Ref ClusterNameSsmParam
+    Export:
+      Name: !Sub '${AWS::StackName}-SSM-Param-Cluster'

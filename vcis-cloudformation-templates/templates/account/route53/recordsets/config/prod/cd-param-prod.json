@@ -1,0 +1,30 @@
+[
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "vcis-route53-recordsets"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "prod"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/prod/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "TemplateFileName",
+    "ParameterValue": "templates/account/route53/recordsets/vcis-route53-recordsets.yaml"
+  },
+  {
+    "ParameterKey": "ConfigPath",
+    "ParameterValue": "templates/account/route53/recordsets/config/prod"
+  },
+  {
+    "ParameterKey": "WorkLoadAccountLevelInputParamsStackName",
+    "ParameterValue": "vcis-prod-workloads-account-input-params"
+  },
+  {
+    "ParameterKey":"CfnStackEraserStackName",
+    "ParameterValue":"vcis-cfn-stack-eraser-custom-resource"
+  }
+]

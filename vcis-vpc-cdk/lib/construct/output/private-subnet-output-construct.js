@@ -1,0 +1,33 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const cdk_1 = require("@aws-cdk/cdk");
+class PrivateSubnetOutputConstruct {
+    constructor(scope, props) {
+        this.scope = scope;
+        this.props = props;
+        this.createPrivateSubnet1IdOutput();
+        // Output - PrivateSubnet1CIDR??
+        this.createPrivateSubnet2IdOutput();
+        // Output - PrivateSubnet2CIDR??
+    }
+    createPrivateSubnet1IdOutput() {
+        new cdk_1.CfnOutput(this.scope, 'PrivateSubnet1Output', {
+            description: 'PrivateSubnet1',
+            value: this.props.vpc.privateSubnets[0].subnetId,
+            export: `${this.props.stackName}-PrivateSubnet1`
+        })
+            .makeImportValue()
+            .toString();
+    }
+    createPrivateSubnet2IdOutput() {
+        new cdk_1.CfnOutput(this.scope, 'PrivateSubnet2Output', {
+            description: 'PrivateSubnet2',
+            value: this.props.vpc.privateSubnets[1].subnetId,
+            export: `${this.props.stackName}-PrivateSubnet2`
+        })
+            .makeImportValue()
+            .toString();
+    }
+}
+exports.PrivateSubnetOutputConstruct = PrivateSubnetOutputConstruct;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoicHJpdmF0ZS1zdWJuZXQtb3V0cHV0LWNvbnN0cnVjdC5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbInByaXZhdGUtc3VibmV0LW91dHB1dC1jb25zdHJ1Y3QudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7QUFBQSxzQ0FBb0Q7QUFHcEQsTUFBYSw0QkFBNEI7SUFFckMsWUFBNkIsS0FBZ0IsRUFBVSxLQUF5QjtRQUFuRCxVQUFLLEdBQUwsS0FBSyxDQUFXO1FBQVUsVUFBSyxHQUFMLEtBQUssQ0FBb0I7UUFDNUUsSUFBSSxDQUFDLDRCQUE0QixFQUFFLENBQUM7UUFDcEMsZ0NBQWdDO1FBQ2hDLElBQUksQ0FBQyw0QkFBNEIsRUFBRSxDQUFDO1FBQ3BDLGdDQUFnQztJQUNwQyxDQUFDO0lBRU8sNEJBQTRCO1FBQ2hDLElBQUksZUFBUyxDQUFDLElBQUksQ0FBQyxLQUFLLEVBQUUsc0JBQXNCLEVBQUU7WUFDOUMsV0FBVyxFQUFFLGdCQUFnQjtZQUM3QixLQUFLLEVBQUUsSUFBSSxDQUFDLEtBQUssQ0FBQyxHQUFHLENBQUMsY0FBYyxDQUFDLENBQUMsQ0FBQyxDQUFDLFFBQVE7WUFDaEQsTUFBTSxFQUFFLEdBQUcsSUFBSSxDQUFDLEtBQUssQ0FBQyxTQUFTLGlCQUFpQjtTQUNuRCxDQUFDO2FBQ0csZUFBZSxFQUFFO2FBQ2pCLFFBQVEsRUFBRSxDQUFDO0lBQ3BCLENBQUM7SUFFTyw0QkFBNEI7UUFDaEMsSUFBSSxlQUFTLENBQUMsSUFBSSxDQUFDLEtBQUssRUFBRSxzQkFBc0IsRUFBRTtZQUM5QyxXQUFXLEVBQUUsZ0JBQWdCO1lBQzdCLEtBQUssRUFBRSxJQUFJLENBQUMsS0FBSyxDQUFDLEdBQUcsQ0FBQyxjQUFjLENBQUMsQ0FBQyxDQUFDLENBQUMsUUFBUTtZQUNoRCxNQUFNLEVBQUUsR0FBRyxJQUFJLENBQUMsS0FBSyxDQUFDLFNBQVMsaUJBQWlCO1NBQ25ELENBQUM7YUFDRyxlQUFlLEVBQUU7YUFDakIsUUFBUSxFQUFFLENBQUM7SUFDcEIsQ0FBQztDQUNKO0FBNUJELG9FQTRCQyIsInNvdXJjZXNDb250ZW50IjpbImltcG9ydCB7IENmbk91dHB1dCwgQ29uc3RydWN0IH0gZnJvbSBcIkBhd3MtY2RrL2Nka1wiO1xuaW1wb3J0IHsgVmNpc1ZwY091dHB1dFByb3BzIH0gZnJvbSBcIi4vdmNpcy12cGMtb3V0cHV0LWNvbnN0cnVjdFwiO1xuXG5leHBvcnQgY2xhc3MgUHJpdmF0ZVN1Ym5ldE91dHB1dENvbnN0cnVjdCB7XG5cbiAgICBjb25zdHJ1Y3Rvcihwcml2YXRlIHJlYWRvbmx5IHNjb3BlOiBDb25zdHJ1Y3QsIHByaXZhdGUgcHJvcHM6IFZjaXNWcGNPdXRwdXRQcm9wcykge1xuICAgICAgICB0aGlzLmNyZWF0ZVByaXZhdGVTdWJuZXQxSWRPdXRwdXQoKTtcbiAgICAgICAgLy8gT3V0cHV0IC0gUHJpdmF0ZVN1Ym5ldDFDSURSPz9cbiAgICAgICAgdGhpcy5jcmVhdGVQcml2YXRlU3VibmV0MklkT3V0cHV0KCk7XG4gICAgICAgIC8vIE91dHB1dCAtIFByaXZhdGVTdWJuZXQyQ0lEUj8/XG4gICAgfVxuXG4gICAgcHJpdmF0ZSBjcmVhdGVQcml2YXRlU3VibmV0MUlkT3V0cHV0KCkge1xuICAgICAgICBuZXcgQ2ZuT3V0cHV0KHRoaXMuc2NvcGUsICdQcml2YXRlU3VibmV0MU91dHB1dCcsIHtcbiAgICAgICAgICAgIGRlc2NyaXB0aW9uOiAnUHJpdmF0ZVN1Ym5ldDEnLFxuICAgICAgICAgICAgdmFsdWU6IHRoaXMucHJvcHMudnBjLnByaXZhdGVTdWJuZXRzWzBdLnN1Ym5ldElkLFxuICAgICAgICAgICAgZXhwb3J0OiBgJHt0aGlzLnByb3BzLnN0YWNrTmFtZX0tUHJpdmF0ZVN1Ym5ldDFgXG4gICAgICAgIH0pXG4gICAgICAgICAgICAubWFrZUltcG9ydFZhbHVlKClcbiAgICAgICAgICAgIC50b1N0cmluZygpO1xuICAgIH1cblxuICAgIHByaXZhdGUgY3JlYXRlUHJpdmF0ZVN1Ym5ldDJJZE91dHB1dCgpIHtcbiAgICAgICAgbmV3IENmbk91dHB1dCh0aGlzLnNjb3BlLCAnUHJpdmF0ZVN1Ym5ldDJPdXRwdXQnLCB7XG4gICAgICAgICAgICBkZXNjcmlwdGlvbjogJ1ByaXZhdGVTdWJuZXQyJyxcbiAgICAgICAgICAgIHZhbHVlOiB0aGlzLnByb3BzLnZwYy5wcml2YXRlU3VibmV0c1sxXS5zdWJuZXRJZCxcbiAgICAgICAgICAgIGV4cG9ydDogYCR7dGhpcy5wcm9wcy5zdGFja05hbWV9LVByaXZhdGVTdWJuZXQyYFxuICAgICAgICB9KVxuICAgICAgICAgICAgLm1ha2VJbXBvcnRWYWx1ZSgpXG4gICAgICAgICAgICAudG9TdHJpbmcoKTtcbiAgICB9XG59Il19

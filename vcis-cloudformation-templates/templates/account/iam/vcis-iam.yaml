@@ -1,0 +1,738 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  AdminRoleName:
+    Description: >
+      This is the Admin role assumed by humans when they need to perform actions in the
+      account requiring elevated privileges.
+    Type: String
+    Default: "vcis-admin-role"
+
+  CfnDeveloperRoleName:
+    Description: >
+      This is the Cfn Developer role assumed by humans when they need to perform actions in the
+      account requiring elevated privileges. This role has permissions for deploying using
+      Cloud-formation templates instead of Service Catalog.
+    Type: String
+    Default: "vcis-cfn-developer-role"
+
+  DeveloperRoleName:
+    Description: >
+      This is the Developer role assumed by humans when they need to perform actions in the
+      account requiring elevated privileges. This role has permissions for deploying using
+      Service Catalog.
+    Type: String
+    Default: "vcis-developer-role"
+
+  CostDashboardRoleName:
+    Description: >
+      This is the role assumed by humans when they need to perform actions in Cost Management Functionalities in the
+      account requiring elevated privileges.
+    Type: String
+    Default: "vcis-cost-dashboard-role"
+
+  ServiceCatalogRoleName:
+    Description: >
+      This is the role assumed by AWS Service Catalog to provision the products in the
+      account requiring elevated privileges.
+    Type: String
+    Default: "vcis-service-catalog-role"
+
+  Env:
+    Description: >-
+      A value used to describe the environment you will deploy to. This value will be used to get values
+      from SSM Parameter Store. Keys in Parameter store should begin with: /vcis/environment.   '
+    Type: String
+    AllowedValues:
+      # non-prod should be used only for account level infra resources (for non-prod account)
+      - non-prod
+      - prod
+    ConstraintDescription: Must be a non-prod or prod.
+
+  # SSM parameter for Project Module tag
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  # Parameters for Auth0 system user
+  Auth0Username:
+    Type: String
+
+  Auth0PolicyName:
+    Type: String
+
+  # Paramter for Mobile/Application user
+  VcisAppUsername:
+    Type: String
+
+Conditions:
+  IsNonProd: !Equals [ !Ref Env, 'non-prod' ]
+
+Resources:
+  VcisViewOnlyPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - apigateway:GET
+              - cloudformation:Describe*
+              - cloudformation:Get*
+              - cloudformation:List*
+              - cloudformation:Estimate*
+              - cloudformation:Preview*
+              - cloudfront:List*
+              - cloudtrail:Describe*
+              - cloudtrail:Get*
+              - cloudtrail:List*
+              - cloudtrail:LookupEvents
+              - cloudwatch:Describe*
+              - cloudwatch:GetMetricData
+              - cloudwatch:GetMetricStatistics
+              - cloudwatch:List*
+              - codebuild:BatchGet*
+              - codebuild:List*
+              - codecommit:BatchGet*
+              - codecommit:Get*
+              - codecommit:List*
+              - codepipeline:List*
+              - codepipeline:Get*
+              - cognito-idp:AdminList*
+              - cognito-idp:List*
+              - cognito-idp:Describe*
+              - cognito-idp:Get*
+              - ec2:Describe*
+              - ec2:Get*
+              - ecr:BatchCheck*
+              - ecr:BatchGet*
+              - ecr:Describe*
+              - ecr:Get*
+              - ecr:List*
+              - es:Describe*
+              - es:List*
+              - es:ESHttpGet
+              - es:ESHttpHead
+              - events:Describe*
+              - events:List*
+              - events:Test*
+              - health:Describe*
+              - health:Get*
+              - health:List*
+              - iam:Generate*
+              - iam:Get*
+              - iam:List*
+              - iam:Simulate*
+              - kinesis:ListStreams
+              - kms:Describe*
+              - kms:Get*
+              - kms:List*
+              - lambda:List*
+              - lambda:GetAccountSettings
+              - logs:Describe*
+              - logs:Get*
+              - logs:FilterLogEvents
+              - logs:ListTagsLogGroup
+              - logs:TestMetricFilter
+              - route53:Get*
+              - route53:List*
+              - route53:Test*
+              - route53domains:Check*
+              - route53domains:Get*
+              - route53domains:List*
+              - route53domains:View*
+              - s3:ListAllMyBuckets
+              - s3:ListBucket
+              - servicecatalog:List*
+              - servicecatalog:Scan*
+              - servicecatalog:Search*
+              - servicecatalog:Describe*
+              - sns:Get*
+              - sns:List*
+              - sns:Check*
+              - sns:Publish
+              - sqs:Get*
+              - sqs:List*
+              - sqs:Receive*
+              - ssm:Describe*
+              - ssm:Get*
+              - ssm:List*
+              - sts:Get*
+              - tag:Get*
+              - trustedadvisor:Describe*
+              - waf:Get*
+              - waf:List*
+              - waf-regional:List*
+              - waf-regional:Get*
+              - xray:BatchGet*
+              - xray:Get*
+              - elasticache:Describe*
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+
+  VcisAdminManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - cloudfront:*
+            Effect: Allow
+            Resource: '*'
+          - Action:
+              - codebuild:*
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:codebuild:*:${AWS::AccountId}:*'
+          - Action:
+              - codepipeline:*
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:codepipeline:*:${AWS::AccountId}:vcis*'
+              - !Sub 'arn:aws:codepipeline:*:${AWS::AccountId}:SC*'
+          - Action:
+              - cloudformation:*
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:*/vcis*'
+              - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:*/Vcis*'
+          - Action:
+              - cloudwatch:*
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:cloudwatch:*:${AWS::AccountId}:alarm:vcis*'
+              - !Sub 'arn:aws:cloudwatch:*:${AWS::AccountId}:dashboard:vcis*'
+          - Action:
+              - ec2:*
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:ec2:*:${AWS::AccountId}:*/vcis*'
+          - Action:
+              - ecr:*
+            Effect: Allow
+            Resource: !Sub 'arn:aws:ecr:*:${AWS::AccountId}:repository/vcis*'
+          - Action:
+              - elasticloadbalancing:*
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:elasticloadbalancing:*:${AWS::AccountId}:loadbalancer/app/vcis*'
+              - !Sub 'arn:aws:elasticloadbalancing:*:${AWS::AccountId}:targetgroup/vcis*'
+          - Action:
+              - events:*
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:events:*:${AWS::AccountId}:rule/vcis*'
+          - Action:
+              - iam:*
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - kms:*
+            Effect: Allow
+            Resource: !Sub 'arn:aws:kms:*:${AWS::AccountId}:key/vcis*'
+          - Action:
+              - logs:*
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/codebuild/*:*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:vcis*:*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:vcis*:*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/vcis*:*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:brazil-value-capture-*:*'
+          - Action:
+              - s3:*
+            Effect: Allow
+            Resource: 'arn:aws:s3:::vcis*'
+          - Action:
+              - sns:*
+            Effect: Allow
+            Resource: !Sub 'arn:aws:sns:*:${AWS::AccountId}:vcis*'
+          - Action:
+              - sqs:*
+            Effect: Allow
+            Resource: !Sub 'arn:aws:sqs:*:${AWS::AccountId}:vcis*'
+          - Action:
+              - ssm:*
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:ssm:*:${AWS::AccountId}:parameter/vcis*'
+          - Action:
+              - events:PutRule
+              - events:PutTargets
+              - events:RemoveTargets
+              - events:DeleteRule
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:events:*:${AWS::AccountId}:rule/vcis-app-*'
+          - Action:
+              - 'elasticache:CreateCacheCluster'
+              - 'elasticache:DescribeCacheEngineVersions'
+              - 'elasticache:CreateCacheParameterGroup'
+              - 'elasticache:CreateCacheSubnetGroup'
+              - 'elasticache:DeleteCacheSubnetGroup'
+              - 'elasticache:DeleteCacheParameterGroup'
+              - 'elasticache:DescribeCacheSubnetGroups'
+              - 'elasticache:CreateSecurityGroup'
+              - 'elasticache:CreateCacheSecurityGroup'
+              - 'elasticache:DeleteCacheSecurityGroup'
+              - 'elasticache:DeleteSecurityGroup'
+              - 'elasticache:AuthorizeCacheSecurityGroupIngress'
+              - 'elasticache:CreateReplicationGroup'
+              - 'elasticache:DeleteReplicationGroup'
+              - 'elasticache:DeleteCacheCluster'
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:elasticache:*:${AWS::AccountId}:*'
+          - Action:
+              - 'route53:CreateVPCAssociationAuthorization'
+            Effect: Allow
+            Resource: 'arn:aws:route53:::hostedzone/*'
+
+        Version: "2012-10-17"
+
+  VcisLambdaCfnDeveloperPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: IsNonProd
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Sid: LambdaWildcardPermission
+            Action:
+              - lambda:List*
+              - lambda:CreateEventSourceMapping
+              - lambda:DeleteEventSourceMapping
+              - lambda:UpdateEventSourceMapping
+              - lambda:Get*
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeSubnets
+            Effect: Allow
+            Resource: '*'
+          - Sid: LambdaInvokePermission
+            Action:
+              - lambda:InvokeFunction
+            Effect: Allow
+            Resource: '*'
+          - Sid: LambdaFunctionPermission
+            Action:
+              - lambda:*
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:lambda:*:${AWS::AccountId}:function:vcis-app-*'
+              - !Sub 'arn:aws:lambda:*:${AWS::AccountId}:function:VcisCommonTagsMacro'
+
+        Version: "2012-10-17"
+
+  VcisCfnDeveloperManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: IsNonProd
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - codebuild:*
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:codebuild:*:${AWS::AccountId}:*'
+          - Action:
+              - codepipeline:*
+            Effect: Allow
+            Resource: !Sub 'arn:aws:codepipeline:*:${AWS::AccountId}:vcis-app-*'
+          - Action:
+              - cloudformation:*
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:*/vcis-app-*'
+              - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:*/Vcis-app-*'
+          - Action:
+              - cloudformation:CreateChangeSet
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:*/vcis*'
+              - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:*/Vcis*'
+          - Action:
+              - iam:*
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:role/vcis-app-*'
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/vcis-app-*'
+          - Action:
+              - s3:Get*
+            Effect: Allow
+            Resource: 'arn:aws:s3:::vcis-*'
+          - Action:
+              - logs:ListTagsLogGroup
+              - logs:DescribeQueries
+              - logs:GetLogRecord
+              - logs:DescribeLogGroups
+              - logs:DescribeLogStreams
+              - logs:DescribeSubscriptionFilters
+              - logs:StartQuery
+              - logs:DescribeMetricFilters
+              - logs:StopQuery
+              - logs:TestMetricFilter
+              - logs:GetLogDelivery
+              - logs:ListLogDeliveries
+              - logs:DescribeExportTasks
+              - logs:GetQueryResults
+              - logs:GetLogEvents
+              - logs:FilterLogEvents
+              - logs:GetLogGroupFields
+              - logs:DescribeResourcePolicies
+              - logs:DescribeDestinations
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/codebuild/*:*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:vcis*:*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:vcis*:*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/vcis*:*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:brazil-value-capture-*:*'
+          - Action:
+              - ssm:*
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:ssm:*:${AWS::AccountId}:parameter/vcis/*/app/*'
+          - Action:
+              - events:PutRule
+              - events:PutTargets
+              - events:RemoveTargets
+              - events:DeleteRule
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:events:*:${AWS::AccountId}:rule/vcis-app-*'
+
+
+        Version: "2012-10-17"
+
+  VcisLambdaDeveloperPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Sid: LambdaWildcardPermission
+            Action:
+              - lambda:List*
+              - lambda:Get*
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeSubnets
+            Effect: Allow
+            Resource: '*'
+          - Sid: LambdaInvokePermission
+            Action:
+              - lambda:InvokeFunction
+            Effect: Allow
+            Resource: '*'
+        Version: "2012-10-17"
+
+  VcisDeveloperManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - apigateway:POST
+            Effect: Allow
+            Resource:
+              - 'arn:aws:apigateway:*::/restapis/*/resources/*/methods/*'
+          - Action:
+              - codebuild:*
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:codebuild:*:${AWS::AccountId}:*'
+          - Action:
+              - codepipeline:StartPipelineExecution
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:codepipeline:*:${AWS::AccountId}:vcis-app-*'
+              - !Sub 'arn:aws:codepipeline:*:${AWS::AccountId}:SC-*'
+          - Action:
+              - s3:Get*
+            Effect: Allow
+            Resource: 'arn:aws:s3:::vcis-*'
+          - Action:
+              - logs:ListTagsLogGroup
+              - logs:DescribeQueries
+              - logs:GetLogRecord
+              - logs:DescribeLogGroups
+              - logs:DescribeLogStreams
+              - logs:DescribeSubscriptionFilters
+              - logs:StartQuery
+              - logs:DescribeMetricFilters
+              - logs:StopQuery
+              - logs:TestMetricFilter
+              - logs:GetLogDelivery
+              - logs:ListLogDeliveries
+              - logs:DescribeExportTasks
+              - logs:GetQueryResults
+              - logs:GetLogEvents
+              - logs:FilterLogEvents
+              - logs:GetLogGroupFields
+              - logs:DescribeResourcePolicies
+              - logs:DescribeDestinations
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/codebuild/*:*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:vcis*:*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:vcis*:*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/vcis*:*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:brazil-value-capture-*:*'
+          - Action:
+              - servicecatalog:TerminateProvisionedProduct
+            Effect: Allow
+            Resource: '*'
+          - Action:
+              - sqs:PurgeQueue
+            Effect: Allow
+            Resource: 
+              - !Sub 'arn:aws:sqs:*:${AWS::AccountId}:vcis-app*'
+        Version: "2012-10-17"
+
+  VcisCostDashboardPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - aws-portal:ViewBilling
+              - aws-portal:ViewUsage
+            Effect: Allow
+            Resource: "*"
+          - Action:
+              - cur:*
+            Effect: Allow
+            Resource:
+              - '*'
+          - Action:
+              - ce:*
+            Effect: Allow
+            Resource:
+              - '*'
+        Version: "2012-10-17"
+        
+  VcisS3SyncPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+            - s3:GetObject
+            - s3:GetObjectTagging
+            - s3:ListBucket
+            - s3:ListObject
+            Effect: Allow
+            Resource:
+              - arn:aws:s3:::value-capture-us-east-1-285453578300
+              - arn:aws:s3:::value-capture-us-east-1-285453578300/*
+        Version: "2012-10-17"
+        
+  VcisServiceCatalogPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - iam:DetachRolePolicy
+              - iam:DeleteRolePolicy
+              - iam:DeletePolicy
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/SC-*'
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:role/SC-*'
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/vcis-app-*'
+          - Action:
+              - events:RemoveTargets
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:events:*:${AWS::AccountId}:rule/vcis-app-*'
+              - !Sub 'arn:aws:events:*:${AWS::AccountId}:rule/SC-*'
+          - Action:
+              - codepipeline:DeletePipeline
+            Effect: Allow
+            Resource:
+              - !Sub 'arn:aws:codepipeline:*:${AWS::AccountId}:SC-*'
+
+        Version: "2012-10-17"
+
+  VcisAdminRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref AdminRoleName
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRoleWithSAML
+            Condition:
+              StringEquals:
+                SAML:aud: https://signin.aws.amazon.com/saml
+            Effect: Allow
+            Principal:
+              Federated: !Sub 'arn:aws:iam::${AWS::AccountId}:saml-provider/PingOne'
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSLambdaFullAccess
+        - arn:aws:iam::aws:policy/AmazonESFullAccess
+        - arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
+        - arn:aws:iam::aws:policy/AWSServiceCatalogAdminFullAccess
+        - arn:aws:iam::aws:policy/AWSSupportAccess
+        - arn:aws:iam::aws:policy/AWSOrganizationsFullAccess
+        - arn:aws:iam::aws:policy/AmazonWorkMailFullAccess
+        - Ref: VcisViewOnlyPolicy
+        - Ref: VcisAdminManagedPolicy
+        - Ref: VcisCostDashboardPolicy
+        - Ref: VcisS3SyncPolicy
+      MaxSessionDuration: 14400
+
+  VcisCfnDeveloperRole:
+    Type: AWS::IAM::Role
+    Condition: IsNonProd
+    Properties:
+      RoleName: !Ref CfnDeveloperRoleName
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRoleWithSAML
+            Condition:
+              StringEquals:
+                SAML:aud: https://signin.aws.amazon.com/saml
+            Effect: Allow
+            Principal:
+              Federated: !Sub 'arn:aws:iam::${AWS::AccountId}:saml-provider/PingOne'
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSServiceCatalogEndUserFullAccess
+        - arn:aws:iam::aws:policy/AWSSupportAccess
+        - Ref: VcisViewOnlyPolicy
+        - Ref: VcisDeveloperManagedPolicy
+        - Ref: VcisLambdaDeveloperPolicy
+        - Ref: VcisCostDashboardPolicy
+        - Ref: VcisCfnDeveloperManagedPolicy
+        - Ref: VcisLambdaCfnDeveloperPolicy
+      MaxSessionDuration: 14400
+
+  VcisDeveloperRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref DeveloperRoleName
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRoleWithSAML
+            Condition:
+              StringEquals:
+                SAML:aud: https://signin.aws.amazon.com/saml
+            Effect: Allow
+            Principal:
+              Federated: !Sub 'arn:aws:iam::${AWS::AccountId}:saml-provider/PingOne'
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSServiceCatalogEndUserFullAccess
+        - arn:aws:iam::aws:policy/AWSSupportAccess
+        - Ref: VcisViewOnlyPolicy
+        - Ref: VcisDeveloperManagedPolicy
+        - Ref: VcisLambdaDeveloperPolicy
+        - Ref: VcisCostDashboardPolicy
+      MaxSessionDuration: 14400
+
+  VcisCostDashboardRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref CostDashboardRoleName
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRoleWithSAML
+            Condition:
+              StringEquals:
+                SAML:aud: https://signin.aws.amazon.com/saml
+            Effect: Allow
+            Principal:
+              Federated: !Sub 'arn:aws:iam::${AWS::AccountId}:saml-provider/PingOne'
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Ref: VcisCostDashboardPolicy
+      MaxSessionDuration: 14400
+
+
+  VcisServiceCatalogRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref ServiceCatalogRoleName
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: [servicecatalog.amazonaws.com]
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSServiceCatalogEndUserFullAccess
+        - arn:aws:iam::aws:policy/IAMFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
+        - arn:aws:iam::aws:policy/AmazonSNSFullAccess
+        - arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess
+        - arn:aws:iam::aws:policy/AWSLambdaFullAccess
+        - arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
+        - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
+        - Ref: VcisServiceCatalogPolicy
+      MaxSessionDuration: 14400
+
+  VcisAuth0User:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Ref Auth0Username
+      Policies:
+        - PolicyName: !Ref Auth0PolicyName
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ses:SendEmail'
+                  - 'ses:SendRawEmail'
+                Resource:
+                  - !Sub 'arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/techconnect-support.np@monsanto.com'
+
+  VcisAuth0UserAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      Status: Active
+      UserName: !Ref VcisAuth0User
+
+  VcisAppUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Ref VcisAppUsername
+      Policies:
+        - PolicyName: !Sub '${VcisAppUsername}-policy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                Resource:
+                  - 'arn:aws:s3:::vcis-app-grower-bucket-*'
+
+  VcisAppUserAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      Status: Active
+      UserName: !Ref VcisAppUser                      
+
+Outputs:
+  VcisAdminRoleArn:
+    Description: 'VCIS Admin Role ARN'
+    Value: !GetAtt VcisAdminRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-VcisAdminRoleArn'
+
+  VcisDeveloperRoleArn:
+    Description: 'VCIS Developer Role ARN'
+    Value: !GetAtt VcisDeveloperRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-VcisDeveloperRoleArn'
+
+  VcisServiceCatalogRoleArn:
+    Description: 'VCIS Service Catalog Role ARN'
+    Value: !GetAtt VcisServiceCatalogRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-VcisServiceCatalogRoleArn'

@@ -1,0 +1,407 @@
+Transform: [VcisCommonTagsMacro]
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+  KMS:
+      Description: "SSM Parameter Name containing KMS Arn for decrypting keys"
+      Type: AWS::SSM::Parameter::Value<String>
+  ProjectModuleTag:
+      Type: AWS::SSM::Parameter::Value<String>
+      Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+  PodSeasonClosingNonFixedGrowerUpdaterSQSName:
+    Type: String
+    Description: PodSeasonClosingNonFixedGrowerUpdaterSQSName description
+  PodSeasonClosingBulkSQSName:
+    Type: String
+    Description: PodSeasonClosingBulkSQSName description
+  PodSeasonClosingUpdaterSQSName:
+    Type: String
+    Description: PodSeasonClosingUpdaterSQSName description
+  PodSeasonClosingSQSName:
+    Type: String
+    Description: PodSeasonClosingSQSName description
+  TopicPersisterSQSName:
+    Type: String
+    Description: TopicPersisterSQSName description
+  PodSeasonClosingUpdatedTopicSNSName:
+    Type: String
+    Description: PodSeasonClosingUpdatedTopicSNSName description
+
+Resources:
+  ### Queues
+  PodSeasonClosingNonFixedGrowerUpdaterSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 300
+      QueueName: !Join
+        - ''
+        - - !Ref PodSeasonClosingNonFixedGrowerUpdaterSQSName
+          - '-'
+          - !Ref Env
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PodSeasonClosingNonFixedGrowerUpdaterSQSError.Arn
+        maxReceiveCount: 5
+
+  PodSeasonClosingNonFixedGrowerUpdaterSQSError:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 300
+      QueueName: !Join
+        - ''
+        - - !Ref PodSeasonClosingNonFixedGrowerUpdaterSQSName
+          - '-error-'
+          - !Ref Env
+
+  PodSeasonClosingNonFixedGrowerUpdaterSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt PodSeasonClosingNonFixedGrowerUpdaterSQS.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt PodSeasonClosingNonFixedGrowerUpdaterSQS.Arn
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt PodSeasonClosingNonFixedGrowerUpdaterSQS.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn:
+                  - !Sub 'arn:aws:sns:us-east-1:578248469025:vcis-app-md-grower-updated-topic-${Env}'
+      Queues:
+        - !Ref PodSeasonClosingNonFixedGrowerUpdaterSQS
+    DependsOn:
+      - PodSeasonClosingNonFixedGrowerUpdaterSQS
+
+  PodSeasonClosingBulkSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 3
+      KmsDataKeyReusePeriodSeconds: 300
+      KmsMasterKeyId: !Ref KMS
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 180
+      QueueName: !Join
+        - ''
+        - - !Ref PodSeasonClosingBulkSQSName
+          - '-'
+          - !Ref Env
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PodSeasonClosingBulkSQSError.Arn
+        maxReceiveCount: 5
+
+  PodSeasonClosingBulkSQSError:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 3
+      KmsDataKeyReusePeriodSeconds: 300
+      KmsMasterKeyId: !Ref KMS
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 180
+      QueueName: !Join
+        - ''
+        - - !Ref PodSeasonClosingBulkSQSName
+          - '-error-'
+          - !Ref Env
+
+  PodSeasonClosingBulkSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt PodSeasonClosingBulkSQS.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt PodSeasonClosingBulkSQS.Arn
+      Queues:
+        - !Ref PodSeasonClosingBulkSQS
+    DependsOn:
+      - PodSeasonClosingBulkSQS
+
+  PodSeasonClosingUpdaterSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 60
+      QueueName: !Join
+        - ''
+        - - !Ref PodSeasonClosingUpdaterSQSName
+          - '-'
+          - !Ref Env
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PodSeasonClosingUpdaterSQSError.Arn
+        maxReceiveCount: 5
+
+  PodSeasonClosingUpdaterSQSError:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 60
+      QueueName: !Join
+        - ''
+        - - !Ref PodSeasonClosingUpdaterSQSName
+          - '-error-'
+          - !Ref Env
+
+  PodSeasonClosingUpdaterSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt PodSeasonClosingUpdaterSQS.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt PodSeasonClosingUpdaterSQS.Arn
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt PodSeasonClosingUpdaterSQS.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn:
+                  - !Sub 'arn:aws:sns:us-east-1:578248469025:vcis-app-credit-extention-to-season-closing-report-topic-${Env}'
+      Queues:
+        - !Ref PodSeasonClosingUpdaterSQS
+    DependsOn:
+      - PodSeasonClosingUpdaterSQS
+
+  PodSeasonClosingSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 30
+      QueueName: !Join
+        - ''
+        - - !Ref PodSeasonClosingSQSName
+          - '-'
+          - !Ref Env
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PodSeasonClosingSQSError.Arn
+        maxReceiveCount: 5
+
+  PodSeasonClosingSQSError:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 30
+      QueueName: !Join
+        - ''
+        - - !Ref PodSeasonClosingSQSName
+          - '-error-'
+          - !Ref Env
+
+  PodSeasonClosingSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt PodSeasonClosingSQS.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt PodSeasonClosingSQS.Arn
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt PodSeasonClosingSQS.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn:
+                  - !Sub 'arn:aws:sns:us-east-1:578248469025:vcis-app-pod-season-closing-updated-topic-${Env}'
+      Queues:
+        - !Ref PodSeasonClosingSQS
+    DependsOn:
+      - PodSeasonClosingSQS
+
+  TopicPersisterSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 60
+      QueueName: !Join
+        - ''
+        - - !Ref TopicPersisterSQSName
+          - '-'
+          - !Ref Env
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt TopicPersisterSQSError.Arn
+        maxReceiveCount: 5
+
+  TopicPersisterSQSError:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 60
+      QueueName: !Join
+        - ''
+        - - !Ref TopicPersisterSQSName
+          - '-error-'
+          - !Ref Env
+
+  TopicPersisterSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt TopicPersisterSQS.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt TopicPersisterSQS.Arn
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt TopicPersisterSQS.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn:
+                  - !Sub 'arn:aws:sns:us-east-1:578248469025:vcis-app-credit-calculated-topic-${Env}'
+                  - !Sub 'arn:aws:sns:us-east-1:578248469025:vcis-app-credit-generated-${Env}'
+                  - !Sub 'arn:aws:sns:us-east-1:578248469025:vcis-app-credit-generation-error-${Env}'
+                  - !Sub 'arn:aws:sns:us-east-1:578248469025:vcis-app-pod-participant-deliveries-updated-topic-${Env}'
+                  - !Sub 'arn:aws:sns:us-east-1:578248469025:vcis-app-pod-rol-updated-topic-${Env}'
+                  - !Sub 'arn:aws:sns:us-east-1:578248469025:vcis-app-pod-season-closing-updated-topic-${Env}'
+      Queues:
+        - !Ref TopicPersisterSQS
+    DependsOn:
+      - TopicPersisterSQS
+
+
+  ### SNS Topics
+  PodSeasonClosingUpdatedTopicSNS:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: ''
+      TopicName: !Join
+        - ''
+        - - !Ref PodSeasonClosingUpdatedTopicSNSName
+          - '-'
+          - !Ref Env
+      Subscription:
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-pod-season-closing-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-topic-persister-${Env}"
+          Protocol: sqs
+
+  PodSeasonClosingUpdatedTopicSNSPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2008-10-17"
+        Id: "__default_policy_ID"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - SNS:GetTopicAttributes
+              - SNS:SetTopicAttributes
+              - SNS:AddPermission
+              - SNS:RemovePermission
+              - SNS:DeleteTopic
+              - SNS:Subscribe
+              - SNS:ListSubscriptionsByTopic
+              - SNS:Publish
+              - SNS:Receive
+            Resource: !Join
+              - ''
+              - - !Ref PodSeasonClosingUpdatedTopicSNS
+                - '-'
+                - !Ref Env
+            Condition:
+              StringEquals:
+                AWS:SourceOwner: 578248469025
+      Topics:
+        - Ref: PodSeasonClosingUpdatedTopicSNS
+    DependsOn:
+      - PodSeasonClosingUpdatedTopicSNS
+
+Outputs:
+  PodSeasonClosingNonFixedGrowerUpdaterSQSOutput:
+    Description: "PodSeasonClosingNonFixedGrowerUpdaterSQS"
+    Value: !GetAtt PodSeasonClosingNonFixedGrowerUpdaterSQS.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-PodSeasonClosingNonFixedGrowerUpdaterSQS'
+  PodSeasonClosingBulkSQSOutput:
+    Description: "PodSeasonClosingBulkSQS"
+    Value: !GetAtt PodSeasonClosingBulkSQS.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-PodSeasonClosingBulkSQS'
+  PodSeasonClosingUpdaterSQSOutput:
+    Description: "PodSeasonClosingUpdaterSQS"
+    Value: !GetAtt PodSeasonClosingUpdaterSQS.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-PodSeasonClosingUpdaterSQS'
+  PodSeasonClosingSQSOutput:
+    Description: "PodSeasonClosingSQS"
+    Value: !GetAtt PodSeasonClosingSQS.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-PodSeasonClosingSQS'
+  TopicPersisterSQSOutput:
+    Description: "TopicPersisterSQS"
+    Value: !GetAtt TopicPersisterSQS.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-TopicPersisterSQS'
+  PodSeasonClosingUpdatedTopicSNSOutput:
+    Description: "PodSeasonClosingUpdatedTopicSNS"
+    Value: !Ref PodSeasonClosingUpdatedTopicSNS
+    Export:
+      Name: !Sub '${AWS::StackName}-PodSeasonClosingUpdatedTopicSNS'

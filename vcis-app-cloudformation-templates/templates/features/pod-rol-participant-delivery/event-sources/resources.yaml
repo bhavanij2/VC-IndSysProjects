@@ -1,0 +1,142 @@
+Transform: [VcisCommonTagsMacro]
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+  KMS:
+      Description: "SSM Parameter Name containing KMS Arn for decrypting keys"
+      Type: AWS::SSM::Parameter::Value<String>
+  ProjectModuleTag:
+      Type: AWS::SSM::Parameter::Value<String>
+      Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+  PodParticipantDeliveryBulkSQSName:
+    Type: String
+    Description: PodParticipantDeliveryBulkSQSName description
+  PodParticipantDeliveriesUpdatedTopicSNSName:
+    Type: String
+    Description: PodParticipantDeliveriesUpdatedTopicSNSName description
+
+Resources:
+  ### Queues
+  PodParticipantDeliveryBulkSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      KmsDataKeyReusePeriodSeconds: 300
+      KmsMasterKeyId: !Ref KMS
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 180
+      QueueName: !Join
+        - ''
+        - - !Ref PodParticipantDeliveryBulkSQSName
+          - '-'
+          - !Ref Env
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PodParticipantDeliveryBulkSQSError.Arn
+        maxReceiveCount: 5
+
+  PodParticipantDeliveryBulkSQSError:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      KmsDataKeyReusePeriodSeconds: 300
+      KmsMasterKeyId: !Ref KMS
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 180
+      QueueName: !Join
+        - ''
+        - - !Ref PodParticipantDeliveryBulkSQSName
+          - '-error-'
+          - !Ref Env
+
+  PodParticipantDeliveryBulkSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt PodParticipantDeliveryBulkSQS.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt PodParticipantDeliveryBulkSQS.Arn
+      Queues:
+        - !Ref PodParticipantDeliveryBulkSQS
+    DependsOn:
+      - PodParticipantDeliveryBulkSQS
+
+
+  ### SNS Topics
+  PodParticipantDeliveriesUpdatedTopicSNS:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: ''
+      TopicName: !Join
+        - ''
+        - - !Ref PodParticipantDeliveriesUpdatedTopicSNSName
+          - '-'
+          - !Ref Env
+      Subscription:
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-topic-persister-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-pod-rol-updater-${Env}"
+          Protocol: sqs
+
+  PodParticipantDeliveriesUpdatedTopicSNSPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2008-10-17"
+        Id: "__default_policy_ID"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - SNS:GetTopicAttributes
+              - SNS:SetTopicAttributes
+              - SNS:AddPermission
+              - SNS:RemovePermission
+              - SNS:DeleteTopic
+              - SNS:Subscribe
+              - SNS:ListSubscriptionsByTopic
+              - SNS:Publish
+              - SNS:Receive
+            Resource: !Join
+              - ''
+              - - !Ref PodParticipantDeliveriesUpdatedTopicSNS
+                - '-'
+                - !Ref Env
+            Condition:
+              StringEquals:
+                AWS:SourceOwner: 578248469025
+      Topics:
+        - Ref: PodParticipantDeliveriesUpdatedTopicSNS
+    DependsOn:
+      - PodParticipantDeliveriesUpdatedTopicSNS
+
+Outputs:
+  PodParticipantDeliveryBulkSQSOutput:
+    Description: "PodParticipantDeliveryBulkSQS"
+    Value: !GetAtt PodParticipantDeliveryBulkSQS.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-PodParticipantDeliveryBulkSQS'
+  PodParticipantDeliveriesUpdatedTopicSNSOutput:
+    Description: "PodParticipantDeliveriesUpdatedTopicSNS"
+    Value: !Ref PodParticipantDeliveriesUpdatedTopicSNS
+    Export:
+      Name: !Sub '${AWS::StackName}-PodParticipantDeliveriesUpdatedTopicSNS'

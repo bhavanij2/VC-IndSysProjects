@@ -1,0 +1,13 @@
+{
+  "Parameters": {
+    "Env": "poc",
+    "ProjectModuleTag": "/vcis/poc/infra/tags/project-module-pod",
+    "KMS": "/vcis/poc/app/kms/sharedAccount",
+    "CustomTags": "Key=mon:feature,Value=commercial-hierarchy,Key=mon:team,Value=lannister,Key=mon:application,Value=Industry System,Key=mon:module,Value=IS",
+    "ChDataRetrieverSQSName": "vcis-app-ch-data-retriever-tmp",
+    "ChPersisterSQSName": "vcis-app-ch-persister-tmp",
+    "ChProcessSQSName": "vcis-app-ch-process-tmp",
+    "BroadcastTriggerSNSName": "vcis-app-broadcast-trigger-tmp",
+    "ChBroadcastSNSName": "vcis-app-ch-broadcast-tmp"
+  }
+}

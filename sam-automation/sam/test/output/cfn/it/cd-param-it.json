@@ -1,0 +1,30 @@
+[
+  {
+    "ParameterKey": "S3SourceKey",
+    "ParameterValue": "vcis-app-credit-exemption-balance-api-it"
+  },
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "vcis-app-credit-exemption-balance-api"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "it"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/it/infra/tags/project-module-pod"
+  },
+  {
+    "ParameterKey": "AppAccountLevelResourcesStackName",
+    "ParameterValue": "vcis-app-non-prod-account-level-resources"
+  },
+  {
+    "ParameterKey": "ApprovalNotificationsStackName",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "CustomTags",
+    "ParameterValue": "Key=mon:feature,Value=credit-exemption-balance,Key=mon:team,Value=lannister,Key=mon:application,Value=Industry System,Key=mon:module,Value=IS"
+  }
+]

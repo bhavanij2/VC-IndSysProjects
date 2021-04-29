@@ -1,0 +1,475 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VCIS API Gateway
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+
+  RestApiName:
+    Type: String
+    Description: 'The API Name (eg: vcis-pod-credit-exemption-balance)'
+
+  RestApiDescription:
+    Type: String
+    Description: Rest API Description
+
+  StageName:
+    Type: String
+    Description: The name of the API Stage. Default is 'release' stage
+    Default: 'release'
+
+  RestApiCustomDomainName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Rest API Custom Domain Name. Default value is 'api.pod-np.its-plus.com' (NonProd) and 'api.pod.its-plus.com' (Prod)
+
+  LambdaAuthorizerStackName:
+    Type: String
+    Description: Stack that exports Lambda Authorizer ARN.
+
+  MinimumCompressionSize:
+    Type: Number
+    Default: 0
+    Description: 'Compression or decompression is not applied on the payload if the payload size is smaller than this value. Setting it to zero allows compression for any payload size.'
+
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+
+Mappings:
+  EnvStageVarMapping:
+    poc:
+      EnvStageVar: 'DEV'
+    dev:
+      EnvStageVar: 'DEV'
+    it:
+      EnvStageVar: 'TEST'
+    prod:
+      EnvStageVar: 'PROD'
+
+Resources:
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${RestApiName}-${Env}'
+      Description: !Ref RestApiDescription
+      ApiKeySourceType: HEADER
+      MinimumCompressionSize: !Ref MinimumCompressionSize
+      EndpointConfiguration:
+        Types:
+          - EDGE
+
+    ## Lambda Authorizer
+  ApiGatewayLambdaAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    DependsOn: RestApi
+    Properties:
+      Name: !Sub 'vcis-pod-ping-authorizer-${Env}'
+      Type: 'REQUEST'
+      AuthorizerResultTtlInSeconds: 0
+      AuthorizerUri: !Join
+        - ''
+        - - 'arn:aws:apigateway:'
+          - !Ref 'AWS::Region'
+          - ':lambda:path/2015-03-31/functions/'
+          - Fn::ImportValue: !Sub "${LambdaAuthorizerStackName}-PodPingAuthorizer"
+          - '/invocations'
+      IdentitySource: 'method.request.header.Authorization'
+      RestApiId: !Ref RestApi
+
+  Deployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+    - PodPath
+    - PodparametersPath
+    - PodparameterscompaniesPath
+    - PodparametersrolPath
+    - PodparametersrolidPath
+    - PodparameterstechnologiesPath
+    - PodrolPath
+    - PodrolmodelPath
+    - PodrolmodelsearchPath
+    - PodrolmodeldocumentPath
+    - PodparameterscompaniesOptionsMethod
+    - PodparametersrolOptionsMethod
+    - PodparametersrolidOptionsMethod
+    - PodparameterstechnologiesOptionsMethod
+    - PodrolmodelOptionsMethod
+    - PodrolmodelsearchOptionsMethod
+    - PodrolmodeldocumentOptionsMethod
+    Properties:
+      Description: API Deployment
+      RestApiId: !Ref RestApi
+
+  Stage:
+    Type: AWS::ApiGateway::Stage
+    DependsOn: Deployment
+    Properties:
+      RestApiId: !Ref RestApi
+      DeploymentId: !Ref Deployment
+      StageName: !Ref StageName
+      Variables:
+        environment: !FindInMap [EnvStageVarMapping, !Ref Env, EnvStageVar]
+
+  ApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    DependsOn: Stage
+    Properties:
+      DomainName: !Ref RestApiCustomDomainName
+      BasePath: !Sub '${RestApiName}-${Env}'
+      RestApiId: !Ref RestApi
+      Stage: !Ref Stage
+
+  PodPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !GetAtt RestApi.RootResourceId
+      PathPart: "pod"
+      RestApiId: !Ref RestApi
+
+  PodparametersPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodPath
+      PathPart: "parameters"
+      RestApiId: !Ref RestApi
+
+  PodparameterscompaniesPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodparametersPath
+      PathPart: "companies"
+      RestApiId: !Ref RestApi
+
+  PodparameterscompaniesOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodparameterscompaniesPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodparametersrolPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodparametersPath
+      PathPart: "rol"
+      RestApiId: !Ref RestApi
+
+  PodparametersrolOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodparametersrolPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodparametersrolidPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodparametersrolPath
+      PathPart: "{id}"
+      RestApiId: !Ref RestApi
+
+  PodparametersrolidOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodparametersrolidPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodparameterstechnologiesPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodparametersPath
+      PathPart: "technologies"
+      RestApiId: !Ref RestApi
+
+  PodparameterstechnologiesOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodparameterstechnologiesPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodrolPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodPath
+      PathPart: "rol"
+      RestApiId: !Ref RestApi
+
+  PodrolmodelPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodrolPath
+      PathPart: "model"
+      RestApiId: !Ref RestApi
+
+  PodrolmodelOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodrolmodelPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodrolmodelsearchPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodrolmodelPath
+      PathPart: "search"
+      RestApiId: !Ref RestApi
+
+  PodrolmodelsearchOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodrolmodelsearchPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodrolmodeldocumentPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodrolmodelPath
+      PathPart: "{document}"
+      RestApiId: !Ref RestApi
+
+  PodrolmodeldocumentOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodrolmodeldocumentPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+
+Outputs:
+  Endpoint:
+    Description: Rest Api Endpoint URL
+    Value: !Sub 'https://${RestApiName}-${Env}.execute-api.${AWS::Region}.amazonaws.com'
+
+  RestApiGatewayId:
+    Description: ApiGatewayId
+    Value: !Ref RestApi
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayId'
+
+  RootResourceId:
+    Description: RootResourceId
+    Value: !GetAtt RestApi.RootResourceId
+    Export:
+      Name: !Sub '${AWS::StackName}-RootResourceId'
+
+  LambdaAuthorizerId:
+    Description: LambdaAuthorizerId
+    Value: !Ref ApiGatewayLambdaAuthorizer
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaAuthorizerId'
+
+  PodPath:
+    Value: !Ref PodPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodPath'
+  PodparametersPath:
+    Value: !Ref PodparametersPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodparametersPath'
+  PodparameterscompaniesPath:
+    Value: !Ref PodparameterscompaniesPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodparameterscompaniesPath'
+  PodparametersrolPath:
+    Value: !Ref PodparametersrolPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodparametersrolPath'
+  PodparametersrolidPath:
+    Value: !Ref PodparametersrolidPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodparametersrolidPath'
+  PodparameterstechnologiesPath:
+    Value: !Ref PodparameterstechnologiesPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodparameterstechnologiesPath'
+  PodrolPath:
+    Value: !Ref PodrolPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodrolPath'
+  PodrolmodelPath:
+    Value: !Ref PodrolmodelPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodrolmodelPath'
+  PodrolmodelsearchPath:
+    Value: !Ref PodrolmodelsearchPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodrolmodelsearchPath'
+  PodrolmodeldocumentPath:
+    Value: !Ref PodrolmodeldocumentPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodrolmodeldocumentPath'

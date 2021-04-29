@@ -1,0 +1,26 @@
+[
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "vcis-cloudfront-dashboard"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "prod"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/prod/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "TemplateFileName",
+    "ParameterValue": "templates/environment/cloudfront/cloudfront-dashboard.yaml"
+  },
+  {
+    "ParameterKey": "ConfigPath",
+    "ParameterValue": "templates/environment/cloudfront/config/prod"
+  },
+  {
+    "ParameterKey": "WorkLoadAccountLevelInputParamsStackName",
+    "ParameterValue": "vcis-prod-workloads-account-input-params"
+  }
+]

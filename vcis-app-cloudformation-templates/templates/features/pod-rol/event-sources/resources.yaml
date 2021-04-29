@@ -1,0 +1,144 @@
+Transform: [VcisCommonTagsMacro]
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+  KMS:
+      Description: "SSM Parameter Name containing KMS Arn for decrypting keys"
+      Type: AWS::SSM::Parameter::Value<String>
+  ProjectModuleTag:
+      Type: AWS::SSM::Parameter::Value<String>
+      Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+  PodRolAdjustedTopicSNSName:
+    Type: String
+    Description: PodRolAdjustedTopicSNSName description
+  PodRolUpdatedTopicSNSName:
+    Type: String
+    Description: PodRolUpdatedTopicSNSName description
+
+Resources:
+  ### Queues
+
+  ### SNS Topics
+  PodRolAdjustedTopicSNS:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: ''
+      TopicName: !Join
+        - ''
+        - - !Ref PodRolAdjustedTopicSNSName
+          - '-'
+          - !Ref Env
+      Subscription:
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-pod-message-inbox-updater-${Env}"
+          Protocol: sqs
+
+  PodRolAdjustedTopicSNSPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2008-10-17"
+        Id: "__default_policy_ID"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - SNS:GetTopicAttributes
+              - SNS:SetTopicAttributes
+              - SNS:AddPermission
+              - SNS:RemovePermission
+              - SNS:DeleteTopic
+              - SNS:Subscribe
+              - SNS:ListSubscriptionsByTopic
+              - SNS:Publish
+              - SNS:Receive
+            Resource: !Join
+              - ''
+              - - !Ref PodRolAdjustedTopicSNS
+                - '-'
+                - !Ref Env
+            Condition:
+              StringEquals:
+                AWS:SourceOwner: 578248469025
+      Topics:
+        - Ref: PodRolAdjustedTopicSNS
+    DependsOn:
+      - PodRolAdjustedTopicSNS
+  PodRolUpdatedTopicSNS:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: ''
+      TopicName: !Join
+        - ''
+        - - !Ref PodRolUpdatedTopicSNSName
+          - '-'
+          - !Ref Env
+      Subscription:
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-topic-persister-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-pod-participant-delivery-updater-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-billable-generator-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-cec-rol-updater-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-pod-message-inbox-updater-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-pod-rol-fixed-volume-updater-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-rol-revert-cec-billable-updater-${Env}"
+          Protocol: sqs
+
+  PodRolUpdatedTopicSNSPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2008-10-17"
+        Id: "__default_policy_ID"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - SNS:GetTopicAttributes
+              - SNS:SetTopicAttributes
+              - SNS:AddPermission
+              - SNS:RemovePermission
+              - SNS:DeleteTopic
+              - SNS:Subscribe
+              - SNS:ListSubscriptionsByTopic
+              - SNS:Publish
+              - SNS:Receive
+            Resource: !Join
+              - ''
+              - - !Ref PodRolUpdatedTopicSNS
+                - '-'
+                - !Ref Env
+            Condition:
+              StringEquals:
+                AWS:SourceOwner: 578248469025
+      Topics:
+        - Ref: PodRolUpdatedTopicSNS
+    DependsOn:
+      - PodRolUpdatedTopicSNS
+
+Outputs:
+  PodRolAdjustedTopicSNSOutput:
+    Description: "PodRolAdjustedTopicSNS"
+    Value: !Ref PodRolAdjustedTopicSNS
+    Export:
+      Name: !Sub '${AWS::StackName}-PodRolAdjustedTopicSNS'
+  PodRolUpdatedTopicSNSOutput:
+    Description: "PodRolUpdatedTopicSNS"
+    Value: !Ref PodRolUpdatedTopicSNS
+    Export:
+      Name: !Sub '${AWS::StackName}-PodRolUpdatedTopicSNS'

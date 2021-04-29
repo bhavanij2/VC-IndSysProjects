@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VCIS SQS Metrics'
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  QueueName:
+    Type: String
+    Description: The sqs name
+  Env:
+    Type: String
+    AllowedValues:
+      - dev
+      - it
+      - prod
+      - poc
+    ConstraintDescription: Environment values must be dev, it, prod or poc
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+  Threshold:
+    Type: Number
+    Description: The value to compare with the specified statistic
+    MinValue: 0
+  Period:
+    Type: Number
+    Description: The period, in seconds, over which the statistic is applied
+    Default: 300
+  LambdaSubscription:
+    Type: String
+    Description: An AWS Lambda function that can receive notifications from Amazon SNS
+
+Resources:
+  SQSAlarmNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${QueueName}-${Env}-AlarmNotificationTopic'
+  MySubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref LambdaSubscription
+      Protocol: lambda
+      TopicArn:
+        Ref: SQSAlarmNotificationTopic
+
+  ApproximateNumberOfMessagesNotVisibleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Ref: SQSAlarmNotificationTopic
+      AlarmDescription: !Sub '${QueueName} The number of messages that are in flight. Messages are considered to be in flight if they have been sent to a client but have not yet been deleted or have not yet reached the end of their visibility window'
+      AlarmName: !Sub '${QueueName}-${Env}-ApproximateNumberOfMessagesNotVisible'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: 'ApproximateNumberOfMessagesNotVisible'
+      Namespace: 'AWS/SQS'
+      Period:
+        !Ref Period
+      Statistic: Sample Count
+      Threshold:
+        !Ref Threshold
+      Dimensions:
+        [
+         {
+            "Name": "QueueName",
+            "Value": !Ref QueueName
+         }
+        ]
+
+  ApproximateNumberOfMessagesVisibleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Ref: SQSAlarmNotificationTopic
+      AlarmDescription: !Sub '${QueueName} The number of messages available for retrieval from the queue'
+      AlarmName: !Sub '${QueueName}-${Env}-ApproximateNumberOfMessagesVisible'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: 'ApproximateNumberOfMessagesVisible'
+      Namespace: 'AWS/SQS'
+      Period:
+        !Ref Period
+      Statistic: Sample Count
+      Threshold:
+        !Ref Threshold
+      Dimensions:
+        [
+         {
+            "Name": "QueueName",
+            "Value": !Ref QueueName
+         }
+        ]
+
+  NumberOfEmptyReceivesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Ref: SQSAlarmNotificationTopic
+      AlarmDescription: !Sub '${QueueName} The number of ReceiveMessage API calls that did not return a message'
+      AlarmName: !Sub '${QueueName}-${Env}-NumberOfEmptyReceives'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: 'NumberOfEmptyReceives'
+      Namespace: 'AWS/SQS'
+      Period:
+        !Ref Period
+      Statistic: Sample Count
+      Threshold:
+        !Ref Threshold
+      Dimensions:
+        [
+         {
+            "Name": "QueueName",
+            "Value": !Ref QueueName
+         }
+        ]

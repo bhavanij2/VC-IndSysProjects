@@ -1,0 +1,181 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  CloudFormation template to create Amazon Elasticsearch domain
+  connected to a VPC via two subnets in two different AZs. Each 
+  instance in the domain uses an EBS volume.
+
+# Transformation macro for tagging
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - non-prod
+      - prod
+    ConstraintDescription: Must be either non-prod or prod
+
+  # SSM parameter for Project Module tag
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  VPCStackName:
+    Type: String
+    Description: The VPC stack name
+
+  ESDomainName:
+    Type: String
+    Description: Name of your Elasticsearch domain.
+    MaxLength: 28
+
+  ESVersion:
+    Type: String
+    Default: '6.2'
+    Description: Version of Elasticsearch
+
+  InstanceCount:
+    Type: Number
+    Description: Number of instances in Elasticsearch domain. (max 20, must be even)
+    Default: 2
+
+  InstanceType:
+    Type: String
+    AllowedValues:
+      - t2.micro.elasticsearch
+      - t2.small.elasticsearch
+      - t2.medium.elasticsearch
+      - m3.medium.elasticsearch
+      - m3.large.elasticsearch
+      - m3.xlarge.elasticsearch
+      - m3.2xlarge.elasticsearch
+      - m4.large.elasticsearch
+      - m4.xlarge.elasticsearch
+      - m4.2xlarge.elasticsearch
+      - m4.4xlarge.elasticsearch
+      - m4.10xlarge.elasticsearch
+      - c4.large.elasticsearch
+      - c4.xlarge.elasticsearch
+      - c4.2xlarge.elasticsearch
+      - c4.4xlarge.elasticsearch
+      - c4.8xlarge.elasticsearch
+      - r3.large.elasticsearch
+      - r3.xlarge.elasticsearch
+      - r3.2xlarge.elasticsearch
+      - r3.4xlarge.elasticsearch
+      - r3.8xlarge.elasticsearch
+      - r4.large.elasticsearch
+      - r4.xlarge.elasticsearch
+      - r4.2xlarge.elasticsearch
+      - r4.4xlarge.elasticsearch
+      - r4.8xlarge.elasticsearch
+      - r4.16xlarge.elasticsearch
+      - i2.xlarge.elasticsearch
+      - i2.2xlarge.elasticsearch
+      - i3.large.elasticsearch
+      - i3.xlarge.elasticsearch
+      - i3.2xlarge.elasticsearch
+      - i3.4xlarge.elasticsearch
+      - i3.8xlarge.elasticsearch
+      - i3.16xlarge.elasticsearch
+    Default: t2.small.elasticsearch
+    Description: https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/aes-supported-instance-types.html
+
+  EBSVolumeType:
+    Type: String
+    Default: gp2
+    Description: >-
+      The EBS volume type for each data node. 
+      See: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html
+    AllowedValues:
+      - standard
+      - gp2
+      - io1
+      - st1
+      - sc1
+
+  EBSVolumeSize:
+    Type: Number
+    Description: >-
+      Specifies the size of the EBS volume for each data node. 
+      See https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/aes-limits.html
+    Default: 10
+
+Resources:
+  ElasticSearchDomain:
+    Type: 'AWS::Elasticsearch::Domain'
+    Properties:
+      AccessPolicies:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            AWS: '*'
+          Action:
+          - 'es:ESHttp*'
+          Resource: !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/${ESDomainName}/*'    
+      DomainName: !Ref ESDomainName
+      ElasticsearchVersion: !Ref ESVersion
+      VPCOptions:
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub "${VPCStackName}-VcisRdsSecurityGroup"
+        SubnetIds:
+          - Fn::ImportValue: !Sub "${VPCStackName}-PublicSubnet1"
+          - Fn::ImportValue: !Sub "${VPCStackName}-PublicSubnet2"
+      ElasticsearchClusterConfig:
+        InstanceCount: !Ref InstanceCount
+        InstanceType: !Ref InstanceType
+        ZoneAwarenessEnabled: true
+      EBSOptions:
+        EBSEnabled: true
+        VolumeSize: !Ref EBSVolumeSize
+        VolumeType: !Ref EBSVolumeType
+
+  ElasticSearchSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Elastic Search Endpoint
+      Name: !Sub '/vcis/${Env}/infra/elasticsearch/url'
+      Type: String
+      Value: !GetAtt [ElasticSearchDomain, DomainEndpoint]        
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Parameters:
+          - ESDomainName
+          - Env
+      -
+        Label:
+          default: Elasticsearch Configuration
+        Parameters:
+          - ESVersion
+          - InstanceCount
+          - InstanceType
+          - EBSVolumeType
+          - EBSVolumeSize
+    ParameterLabels:
+      ESDomainName:
+        default: Elasticsearch Domain Name
+      Env:
+        default: Environment
+      ESVersion:
+        default: Elastic Search Version
+      InstanceCount:
+        default: Number of Instances
+      InstanceType:
+        default: Type of Instances
+      EBSVolumeType:
+        default: Type of EBS Volumes
+      EBSVolumeSize:
+        default: Size of EBS Volumes
+                
+Outputs:
+  ElasticSearchDomainUrl:
+    Description: The URL if the Elasticsearch domain
+    Value: !GetAtt [ElasticSearchDomain, DomainEndpoint]
+  ElasticSearchArn:
+    Description: The Elastic Search ARN
+    Value: !GetAtt [ElasticSearchDomain, Arn]

@@ -1,0 +1,14 @@
+#!/usr/bin/env node
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const vcis_cdk_utils_1 = require("@monsantoit/vcis-cdk-utils");
+require("source-map-support/register");
+const vcis_vpc_stack_1 = require("../lib/vcis-vpc-stack");
+const app = new vcis_cdk_utils_1.VcisApp();
+vcis_cdk_utils_1.InputParameterHolder.setup(app.node).then(() => {
+    new vcis_vpc_stack_1.VcisVpcStack(app, 'vcis-vpc-stack');
+    app.run();
+}).catch(error => {
+    console.error(error);
+});
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoidmNpcy12cGMtYXBwLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsidmNpcy12cGMtYXBwLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7OztBQUNBLCtEQUEyRTtBQUMzRSx1Q0FBcUM7QUFDckMsMERBQXFEO0FBRXJELE1BQU0sR0FBRyxHQUFHLElBQUksd0JBQU8sRUFBRSxDQUFDO0FBRTFCLHFDQUFvQixDQUFDLEtBQUssQ0FBQyxHQUFHLENBQUMsSUFBSSxDQUFDLENBQUMsSUFBSSxDQUFDLEdBQUUsRUFBRTtJQUMxQyxJQUFJLDZCQUFZLENBQUMsR0FBRyxFQUFFLGdCQUFnQixDQUFDLENBQUM7SUFDeEMsR0FBRyxDQUFDLEdBQUcsRUFBRSxDQUFDO0FBQ2QsQ0FBQyxDQUFDLENBQUMsS0FBSyxDQUFDLEtBQUssQ0FBQyxFQUFFO0lBQ2IsT0FBTyxDQUFDLEtBQUssQ0FBQyxLQUFLLENBQUMsQ0FBQztBQUN6QixDQUFDLENBQUMsQ0FBQSIsInNvdXJjZXNDb250ZW50IjpbIiMhL3Vzci9iaW4vZW52IG5vZGVcbmltcG9ydCB7IFZjaXNBcHAsIElucHV0UGFyYW1ldGVySG9sZGVyIH0gZnJvbSAnQG1vbnNhbnRvaXQvdmNpcy1jZGstdXRpbHMnO1xuaW1wb3J0ICdzb3VyY2UtbWFwLXN1cHBvcnQvcmVnaXN0ZXInO1xuaW1wb3J0IHsgVmNpc1ZwY1N0YWNrIH0gZnJvbSAnLi4vbGliL3ZjaXMtdnBjLXN0YWNrJztcblxuY29uc3QgYXBwID0gbmV3IFZjaXNBcHAoKTtcblxuSW5wdXRQYXJhbWV0ZXJIb2xkZXIuc2V0dXAoYXBwLm5vZGUpLnRoZW4oKCk9PntcbiAgICBuZXcgVmNpc1ZwY1N0YWNrKGFwcCwgJ3ZjaXMtdnBjLXN0YWNrJyk7XG4gICAgYXBwLnJ1bigpO1xufSkuY2F0Y2goZXJyb3IgPT4ge1xuICAgIGNvbnNvbGUuZXJyb3IoZXJyb3IpO1xufSlcbiJdfQ==

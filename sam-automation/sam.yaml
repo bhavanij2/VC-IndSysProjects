@@ -1,0 +1,108 @@
+Transform: "AWS::Serverless-2016-10-31"
+Parameters:
+    Env:
+        Type: String
+        Description: "Environment in which resources should be deployed"
+        AllowedValues:
+          - poc
+          - dev
+          - it
+          - prod
+        Default: dev
+    GithubPersonalAccessTokenSsmName:
+        Description: "SSM parameter name of Personal Access token to Access Github POD-inc organization"
+        Type: String
+        Default: "/vcis/non-prod/app/github/token"
+    Timeout:
+        Description: "Timeout [s]"
+        Type: Number
+        Default: 60
+    MemorySize:
+        Description: "Memory Size [MB]"
+        Type: Number
+        Default: 128
+
+Mappings:
+  SharedAccountValuesMap:
+    poc:
+      SSMParameterNameWithAWSCredentials: "/vcis/non-prod/app/aws/sharedAccount"
+    dev:
+      SSMParameterNameWithAWSCredentials: "/vcis/non-prod/app/aws/sharedAccount"
+    it:
+      SSMParameterNameWithAWSCredentials: "/vcis/non-prod/app/aws/sharedAccount"
+    prod:
+      SSMParameterNameWithAWSCredentials: "/vcis/prod/app/aws/sharedAccount"
+Resources:
+    ServiceMigrationFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            Handler: sam/index.handler
+            Runtime: nodejs10.x
+            CodeUri: ./sam
+            Environment:
+              Variables:
+                GITHUB_TOKEN_PARAMETER_NAME: !Ref GithubPersonalAccessTokenSsmName
+                AWS_CREDENTIALS_SSM_PARAMETER_NAME: !FindInMap [SharedAccountValuesMap, !Ref Env, SSMParameterNameWithAWSCredentials]
+            Timeout:
+              Ref: Timeout
+            MemorySize:
+              Ref: MemorySize
+            Policies:
+              - Statement:
+                - Effect: Allow
+                  Action:
+                    - ssm:GetParameter
+                  Resource:
+                    - !Join ['',[!Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter", !FindInMap [SharedAccountValuesMap, !Ref Env, SSMParameterNameWithAWSCredentials]]]
+                    - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${GithubPersonalAccessTokenSsmName}"
+            PermissionsBoundary:
+                    Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/standard-permissions-boundary
+    ApiMigrationFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            Handler: api/index.handler
+            Runtime: nodejs10.x
+            CodeUri: ./api
+            Environment:
+              Variables:
+                GITHUB_TOKEN_PARAMETER_NAME: !Ref GithubPersonalAccessTokenSsmName
+                AWS_CREDENTIALS_SSM_PARAMETER_NAME: !FindInMap [SharedAccountValuesMap, !Ref Env, SSMParameterNameWithAWSCredentials]
+            Timeout:
+              Ref: Timeout
+            MemorySize:
+              Ref: MemorySize
+            Policies:
+              - Statement:
+                - Effect: Allow
+                  Action:
+                    - ssm:GetParameter
+                  Resource:
+                    - !Join ['',[!Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter", !FindInMap [SharedAccountValuesMap, !Ref Env, SSMParameterNameWithAWSCredentials]]]
+                    - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${GithubPersonalAccessTokenSsmName}"
+            PermissionsBoundary:
+                    Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/standard-permissions-boundary
+
+    EventSourcesMigrationFunction:
+      Type: AWS::Serverless::Function
+      Properties:
+        Handler: event-sources/index.handler
+        Runtime: nodejs10.x
+        CodeUri: ./event-sources
+        Environment:
+          Variables:
+            GITHUB_TOKEN_PARAMETER_NAME: !Ref GithubPersonalAccessTokenSsmName
+            AWS_CREDENTIALS_SSM_PARAMETER_NAME: !FindInMap [SharedAccountValuesMap, !Ref Env, SSMParameterNameWithAWSCredentials]
+        Timeout:
+          Ref: Timeout
+        MemorySize:
+          Ref: MemorySize
+        Policies:
+          - Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource:
+                  - !Join ['',[!Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter", !FindInMap [SharedAccountValuesMap, !Ref Env, SSMParameterNameWithAWSCredentials]]]
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${GithubPersonalAccessTokenSsmName}"
+        PermissionsBoundary:
+          Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/standard-permissions-boundary

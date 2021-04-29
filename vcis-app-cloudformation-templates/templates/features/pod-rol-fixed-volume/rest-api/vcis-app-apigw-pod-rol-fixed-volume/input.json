@@ -1,0 +1,26 @@
+{
+  "newRestApiName": "vcis-app-apigw-pod-rol-fixed-volume",
+  "newRestApiDescription": "POD - ROL Fixed Volume API",
+  "tags": {
+    "teamName": "stark",
+    "featureName": "pod-rol-fixed-volume",
+    "applicationName": "Industry System",
+    "moduleName": "IS"
+  },
+  "pathsToInclude": [
+    "/pod/rol/fixed-volume",
+    "/pod/rol/fixed-volume/bulk",
+    "/pod/rol/fixed-volume/bulk/list",
+    "/pod/rol/fixed-volume/bulk/xlsx/{bulkid}",
+    "/pod/rol/fixed-volume/partner",
+    "/pod/rol/fixed-volume/partner/{document}",
+    "/pod/rol/fixed-volume/partner/{document}/sum",
+    "/pod/rol/fixed-volume/{id}"
+  ],
+  "originalRestApiId": "gkg1ib9end",
+  "originalRestApiStageName": "dev",
+  "baseBranch": "develop",
+  "migrationBranchName": "VCT-10567",
+  "commitMessagePrefix": "VCT-10567 - APIGw Automatic Migration - FixedVolume",
+  "githubTokenSSM": "/vcis/non-prod/app/github/token-svill4"
+}

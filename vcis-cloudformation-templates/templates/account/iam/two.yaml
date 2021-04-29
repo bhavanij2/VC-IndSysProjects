@@ -1,0 +1,122 @@
+VcisLambdaDeveloperPolicy:
+  Type: AWS::IAM::ManagedPolicy
+  Properties:
+    PolicyDocument:
+      Statement:
+        - Sid: LambdaWildcardPermission
+          Action:
+            - lambda:List*
+            - lambda:CreateEventSourceMapping
+            - lambda:DeleteEventSourceMapping
+            - lambda:UpdateEventSourceMapping
+            - lambda:Get*
+            - ec2:DescribeSecurityGroups
+            - ec2:DescribeSubnets
+          Effect: Allow
+          Resource: '*'
+        - Sid: LambdaInvokePermission
+          Action:
+            - lambda:InvokeFunction
+          Effect: Allow
+          Resource: '*'
+        - Sid: LambdaFunctionPermission
+          Action:
+            - lambda:*
+          Effect: Allow
+          Resource:
+            - !Sub 'arn:aws:lambda:*:${AWS::AccountId}:function:vcis-app-*'
+            - !Sub 'arn:aws:lambda:*:${AWS::AccountId}:function:VcisCommonTagsMacro'
+
+      Version: "2012-10-17"
+
+VcisDeveloperManagedPolicy:
+  Type: AWS::IAM::ManagedPolicy
+  Properties:
+    PolicyDocument:
+      Statement:
+        - Action:
+            - apigateway:POST
+          Effect: Allow
+          Resource:
+            - 'arn:aws:apigateway:*::/restapis/*/resources/*/methods/*'
+        - Action:
+            - codebuild:*
+          Effect: Allow
+          Resource:
+            - !Sub 'arn:aws:codebuild:*:${AWS::AccountId}:*'
+        - Action:
+            - codepipeline:*
+          Effect: Allow
+          Resource: !Sub 'arn:aws:codepipeline:*:${AWS::AccountId}:vcis-app-*'
+        - Action:
+            - cloudformation:*
+          Effect: Allow
+          Resource:
+            - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:*/vcis-app-*'
+            - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:*/Vcis-app-*'
+        - Action:
+            - cloudformation:CreateChangeSet
+          Effect: Allow
+          Resource:
+            - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:*/vcis*'
+            - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:*/Vcis*'
+        - Action:
+            - iam:*
+          Effect: Allow
+          Resource:
+            - !Sub 'arn:aws:iam::${AWS::AccountId}:role/vcis-app-*'
+            - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/vcis-app-*'
+        - Action:
+            - s3:Get*
+          Effect: Allow
+          Resource: !Sub 'arn:aws:s3:::vcis-*'
+        - Action:
+            - logs:ListTagsLogGroup
+            - logs:DescribeQueries
+            - logs:GetLogRecord
+            - logs:DescribeLogGroups
+            - logs:DescribeLogStreams
+            - logs:DescribeSubscriptionFilters
+            - logs:StartQuery
+            - logs:DescribeMetricFilters
+            - logs:StopQuery
+            - logs:TestMetricFilter
+            - logs:GetLogDelivery
+            - logs:ListLogDeliveries
+            - logs:DescribeExportTasks
+            - logs:GetQueryResults
+            - logs:GetLogEvents
+            - logs:FilterLogEvents
+            - logs:GetLogGroupFields
+            - logs:DescribeResourcePolicies
+            - logs:DescribeDestinations
+          Effect: Allow
+          Resource:
+            - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/codebuild/*:*'
+            - !Sub 'arn:aws:logs:*:${AWS::AccountId}:vcis*:*'
+            - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:vcis*:*'
+            - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/vcis*:*'
+            - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:brazil-value-capture-*:*'
+        - Action:
+            - ssm:*
+          Effect: Allow
+          Resource:
+            - !Sub 'arn:aws:ssm:*:${AWS::AccountId}:parameter/vcis/*/app/*'
+        - Action:
+            - es:*
+          Effect: Allow
+          Resource:
+            - !Sub 'arn:aws:es:*:${AWS::AccountId}:domain/vcis-app-*'
+        - Action:
+            - events:PutRule
+            - events:PutTargets
+            - events:RemoveTargets
+            - events:DeleteRule
+          Effect: Allow
+          Resource:
+            - !Sub 'arn:aws:events:*:${AWS::AccountId}:rule/vcis-app-*'
+        - Action:
+            - support:*
+          Effect: Allow
+          Resource: '*'
+      Version: "2012-10-17"

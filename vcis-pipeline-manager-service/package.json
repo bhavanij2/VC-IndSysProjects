@@ -1,0 +1,15 @@
+{
+  "name": "pipelinemanager",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "debug-pipelinemanager": "cd PipelineManager && node --nolazy --inspect-brk=9229 test.js",
+    "postinstall": "(cd PipelineManager &&  npm install);"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.platforms.engineering/POD-Inc/vcis-git2s3-service"
+  },
+  "author": "afrei",
+  "license": "ISC"
+}

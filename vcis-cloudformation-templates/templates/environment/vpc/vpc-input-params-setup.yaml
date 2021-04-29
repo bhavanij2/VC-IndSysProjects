@@ -1,0 +1,140 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VCIS SSM Param Config for VPC'
+
+Transform: [VcisCommonTagsMacro]
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod.
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+Mappings:
+  ValuesMap:
+    poc:
+      BastionKey: 'vcis-bastion-non-prod'
+      BastionInstanceType: 't2.nano'
+      CentralBastionIp01: '52.22.113.235/32'
+      CentralBastionIp02: '52.39.76.251/32'
+      VpcCidr: '172.18.64.0/19'
+      PublicSubnet01: '172.18.64.0/24'
+      PublicSubnet02: '172.18.65.0/24'
+      PrivateSubnet01: '172.18.68.0/22'
+      PrivateSubnet02: '172.18.72.0/22'
+      RdsSubnet01: '172.18.66.0/24'
+      RdsSubnet02: '172.18.67.0/24'
+    dev:
+      BastionKey: 'vcis-bastion-non-prod'
+      BastionInstanceType: 't2.nano'
+      CentralBastionIp01: '52.22.113.235/32'
+      CentralBastionIp02: '52.39.76.251/32'
+      VpcCidr: '172.18.0.0/19'
+      PublicSubnet01: '172.18.0.0/24'
+      PublicSubnet02: '172.18.1.0/24'
+      PrivateSubnet01: '172.18.4.0/22'
+      PrivateSubnet02: '172.18.8.0/22'
+      RdsSubnet01: '172.18.2.0/24'
+      RdsSubnet02: '172.18.3.0/24'
+    it:
+      BastionKey: 'vcis-bastion-non-prod'
+      BastionInstanceType: 't2.nano'
+      CentralBastionIp01: '52.22.113.235/32'
+      CentralBastionIp02: '52.39.76.251/32'
+      VpcCidr: '172.18.128.0/19'
+      PublicSubnet01: '172.18.128.0/24'
+      PublicSubnet02: '172.18.129.0/24'
+      PrivateSubnet01: '172.18.132.0/22'
+      PrivateSubnet02: '172.18.136.0/22'
+      RdsSubnet01: '172.18.130.0/24'
+      RdsSubnet02: '172.18.131.0/24'
+    prod:
+      BastionKey: 'vcis-bastion-prod'
+      BastionInstanceType: 't2.nano'
+      CentralBastionIp01: '52.22.113.235/32'
+      CentralBastionIp02: '52.39.76.251/32'
+      VpcCidr: '172.20.0.0/19'
+      PublicSubnet01: '172.20.0.0/24'
+      PublicSubnet02: '172.20.1.0/24'
+      PrivateSubnet01: '172.20.4.0/22'
+      PrivateSubnet02: '172.20.8.0/22'
+      RdsSubnet01: '172.20.2.0/24'
+      RdsSubnet02: '172.20.3.0/24'
+
+Resources:
+  BastionHostKeyNameSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: 'Bastion Host Key Name'
+      Name: !Sub '/vcis/${Env}/infra/vpc/bastion-keypair'
+      Tier: Standard
+      Type: String
+      Value: !FindInMap [ValuesMap, !Ref Env, BastionKey]
+
+  BastionInstanceTypeSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: 'Bastion Instance Type'
+      Name: !Sub '/vcis/${Env}/infra/vpc/bastion-instance-type'
+      Tier: Standard
+      Type: String
+      Value: !FindInMap [ValuesMap, !Ref Env, BastionInstanceType]
+
+  BastionIPSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: 'Bastion Primary and Secondary central jumpbox IPs'
+      Name: !Sub '/vcis/${Env}/infra/vpc/central-bastion-ips'
+      Tier: Standard
+      Type: StringList
+      Value: !Sub
+        - '${ip01},${ip02}'
+        - { ip01: !FindInMap [ValuesMap, !Ref Env, CentralBastionIp01], ip02: !FindInMap [ValuesMap, !Ref Env, CentralBastionIp02]}
+
+  VpcCidrBlockSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: 'VPC CIDR'
+      Name: !Sub '/vcis/${Env}/infra/vpc/cidr-block'
+      Tier: Standard
+      Type: String
+      Value: !FindInMap [ValuesMap, !Ref Env, VpcCidr]
+
+  VpcPublicSubnetsCidrBlockSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: 'VPC - Public Subnets CIDR'
+      Name: !Sub '/vcis/${Env}/infra/vpc/public-cidr-blocks'
+      Tier: Standard
+      Type: StringList
+      Value: !Sub
+        - '${ip01},${ip02}'
+        - { ip01: !FindInMap [ValuesMap, !Ref Env, PublicSubnet01], ip02: !FindInMap [ValuesMap, !Ref Env, PublicSubnet02]}
+
+  VpcPrivateSubnetsCidrBlockSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: 'VPC - Private Subnets CIDR'
+      Name: !Sub '/vcis/${Env}/infra/vpc/private-cidr-blocks'
+      Tier: Standard
+      Type: StringList
+      Value: !Sub
+        - '${ip01},${ip02}'
+        - { ip01: !FindInMap [ValuesMap, !Ref Env, PrivateSubnet01], ip02: !FindInMap [ValuesMap, !Ref Env, PrivateSubnet02]}
+
+  VpcRdsSubnetsCidrBlockSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: 'VPC - RDS Subnets CIDR'
+      Name: !Sub '/vcis/${Env}/infra/vpc/rds-cidr-blocks'
+      Tier: Standard
+      Type: StringList
+      Value: !Sub
+        - '${ip01},${ip02}'
+        - { ip01: !FindInMap [ValuesMap, !Ref Env, RdsSubnet01], ip02: !FindInMap [ValuesMap, !Ref Env, RdsSubnet02]}

@@ -1,0 +1,10 @@
+[
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "non-prod"
+  },
+  {
+    "ParameterKey": "AccountLevelResourcesStackName",
+    "ParameterValue": "vcis-non-prod-account-level-resources"
+  }
+]

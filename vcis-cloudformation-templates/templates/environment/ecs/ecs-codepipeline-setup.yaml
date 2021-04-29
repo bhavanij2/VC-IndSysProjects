@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VCIS SSM Param Config for ECS/Fargate'
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  # Stack name for centralize the S3 log files
+  AccountLevelResourcesStackName:
+    Description: "Stack containing the name of the target bucket for other S3 bucket log files (LoggingTargetBucket)"
+    Type: String
+    
+Resources:
+# Store maven settings.xml file as 'java-config.zip' manually under this S3 location. TODO: Need to automate this process
+  ConfigStoreBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: !Sub 'vcis-config-store-${Env}'
+      VersioningConfiguration:
+        Status: Enabled
+      LoggingConfiguration:
+        DestinationBucketName: !Ref LoggingTargetBucket
+        LogFilePrefix: !Sub '${AWS::StackName}/log'
+
+  configStoreBucketSsmParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: !Ref ConfigStoreBucket
+      Description: !Sub '/vcis/${Env}/infra/code-pipeline/s3-config-store-bucket'
+      Name: !Sub '/vcis/${Env}/infra/code-pipeline/s3-config-store-bucket'
+
+  ecsS3SourceBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: !Sub 'vcis-ecs-github-source-${Env}'
+      VersioningConfiguration:
+        Status: Enabled
+      LoggingConfiguration:
+        DestinationBucketName: !Ref LoggingTargetBucket
+        LogFilePrefix: !Sub '${AWS::StackName}/log'
+
+  s3SourceBucketSsmParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: !Ref ecsS3SourceBucket
+      Description: !Sub '/vcis/${Env}/infra/code-pipeline/ecs-s3-source-bucket'
+      Name: !Sub '/vcis/${Env}/infra/code-pipeline/ecs-s3-source-bucket'
+
+  s3SourceKeySsmParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: vcis-todos-service
+      Description: !Sub '/vcis/${Env}/infra/code-pipeline/ecs-s3-source-key'
+      Name: !Sub '/vcis/${Env}/infra/code-pipeline/ecs-s3-source-key'
+
+  s3ArtifactStoreBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: !Sub 'vcis-ecs-codepipeline-artifact-store-${Env}'
+      VersioningConfiguration:
+        Status: Enabled
+      LoggingConfiguration:
+        DestinationBucketName: !Ref LoggingTargetBucket
+        LogFilePrefix: !Sub '${AWS::StackName}/log'
+
+  s3ArtifactStoreSsmParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: !Ref s3ArtifactStoreBucket
+      Description: !Sub '/vcis/${Env}/infra/code-pipeline/ecs/s3-artifact-store-bucket'
+      Name: !Sub '/vcis/${Env}/infra/code-pipeline/ecs/s3-artifact-store-bucket'
+

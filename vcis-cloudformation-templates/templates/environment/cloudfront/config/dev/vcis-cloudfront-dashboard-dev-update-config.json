@@ -1,0 +1,25 @@
+{
+  "Parameters" : {
+    "Env": "dev",
+    "ProjectModuleTag": "/vcis/dev/infra/tags/project-module-value-capture-industry-system",
+    "CloudFrontDashboardName": "itsplus - DEV",
+    "CloudfrontId": "E1ZQW0YMDZP4SR",
+    "CheckAuthLambdaName": "vcis-cloudfront-distribution-todo-ui-poc-CheckAuth-100X0194D1RDA",
+    "CheckAuthLambdaVersion": "6",
+    "ParseAuthLambdaName": "vcis-cloudfront-distribution-todo-ui-poc-ParseAuth-166B7YEWFDZPC",
+    "ParseAuthLambdaVersion": "6",
+    "RefreshAuthLambdaName": "vcis-cloudfront-distribution-todo-ui-p-RefreshAuth-1HTZ4UWFIOR9R",
+    "RefreshAuthLambdaVersion": "1",
+    "S3WebPagesBucket": "vcis-app-non-prod-account-level-re-webpagesbucket-1hbiogkmya4a3",
+    "CloudFrontRegion": "us-east-1",
+    "InfraOpsSlackNotifierStackName": "",
+    "4xxErrorRateThreshold": 0.15,
+    "5xxErrorRateThreshold": 0.15,
+    "RequestThreshold": 1000,
+    "S3BucketSizeThreshold": 150000,
+    "4xxErrorRatePeriod": 300,
+    "5xxErrorRatePeriod": 300,
+    "RequestPeriod": 300,
+    "S3BucketSizePeriod": 300
+  }
+}

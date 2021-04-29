@@ -1,0 +1,42 @@
+[
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "poc"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/poc/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "S3ConfigStoreBucket",
+    "ParameterValue": "/vcis/poc/infra/code-pipeline/s3-config-store-bucket"
+  },
+  {
+    "ParameterKey": "S3SourceBucket",
+    "ParameterValue": "/vcis/poc/infra/code-pipeline/ecs-s3-source-bucket"
+  },
+  {
+    "ParameterKey": "S3SourceKey",
+    "ParameterValue": "/vcis/poc/infra/code-pipeline/ecs-s3-source-key"
+  },
+  {
+    "ParameterKey": "S3CodePipelineArtifactStore",
+    "ParameterValue": "/vcis/poc/infra/code-pipeline/ecs/s3-artifact-store-bucket"
+  },
+  {
+    "ParameterKey": "ECSClusterName",
+    "ParameterValue": "/vcis/poc/infra/ecs/output/cluster-name"
+  },
+  {
+    "ParameterKey": "ECSServiceName",
+    "ParameterValue": "vcis-todos-service-poc"
+  },
+  {
+    "ParameterKey": "ECSContainerName",
+    "ParameterValue": "vcis-todos-service-poc-app"
+  },
+  {
+    "ParameterKey": "SNSNotificationArn",
+    "ParameterValue": "/vcis/dev/app/sns/alarm-notify-topic"
+  }
+]

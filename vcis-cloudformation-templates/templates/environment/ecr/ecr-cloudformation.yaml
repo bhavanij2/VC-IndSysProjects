@@ -1,0 +1,32 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VCIS ECR
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Type: String
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+  
+  ImageName:
+    Description: >-
+      Name the image repository you are creating.
+    Type: String  
+
+Resources:
+  MysteryMachine:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub 'vcis-${Env}-${ImageName}'
+
+Outputs:
+  Arn:
+    Value: !GetAtt MysteryMachine.Arn

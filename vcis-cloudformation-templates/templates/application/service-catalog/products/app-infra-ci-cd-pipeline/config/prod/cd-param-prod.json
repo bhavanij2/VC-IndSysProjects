@@ -1,0 +1,26 @@
+[
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "vcis-service-catalog-app-infra-ci-cd-pipeline-product"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "prod"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/prod/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "TemplateFileName",
+    "ParameterValue": "templates/application/service-catalog/products/app-infra-ci-cd-pipeline/app-infra-ci-cd-pipeline-product.yaml"
+  },
+  {
+    "ParameterKey": "ConfigPath",
+    "ParameterValue": "templates/application/service-catalog/products/app-infra-ci-cd-pipeline/config/prod"
+  },
+  {
+    "ParameterKey": "WorkLoadAccountLevelInputParamsStackName",
+    "ParameterValue": "vcis-prod-workloads-account-input-params"
+  }
+]

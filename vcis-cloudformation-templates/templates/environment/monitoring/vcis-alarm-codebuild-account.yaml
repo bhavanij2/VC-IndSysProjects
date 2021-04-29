@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VCIS CodeBuild Account Metrics'
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  LambdaSubscription:
+    Type: String
+    Description: An AWS Lambda function that can receive notifications from Amazon SNS
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+    Default: /vcis/common/infra/tags/project-module-value-capture-industry-system
+Resources:
+  CodeBuildAlarmNotificationSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: CodeBuildAlarmNotificationTopic
+  MySubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref LambdaSubscription
+      Protocol: lambda
+      TopicArn: 
+        Ref: CodeBuildAlarmNotificationSNSTopic
+
+  FailedBuildAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmActions:
+        - Ref: CodeBuildAlarmNotificationSNSTopic
+      AlarmDescription: 
+        Ref: AlarmDescription
+      AlarmName: 'vcisFailedBuildByAccount'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: 'FailedBuilds'
+      Namespace: 'AWS/CodeBuild'
+      Period: 300
+      Statistic: Sum
+      Threshold: 1
+
+  DurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmActions:
+        - Ref: CodeBuildAlarmNotificationSNSTopic
+      AlarmDescription: 
+        Ref: AlarmDescription
+      AlarmName: 
+        Ref: AlarmName
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: 'Duration'
+      Namespace: 'AWS/CodeBuild'
+      Period: 300
+      Statistic: Sum
+      Threshold: 1

@@ -1,0 +1,11 @@
+{
+  "Parameters" : {
+    "Env": "it",
+    "RestApiName" : "vcis-app-apigw-pod-rol_update",
+    "RestApiDescription" : "POD - ROL API",
+    "LambdaAuthorizerARN" : "/vcis/non-prod/infra/lambda-authorizer/arn",
+    "RestApiCustomDomainName" : "/vcis/non-prod/infra/rest-api-domain/name",
+    "ProjectModuleTag": "/vcis/it/infra/tags/project-module-value-capture-industry-system",
+    "CustomTags": "Key=mon:feature,Value=pod-rol,Key=mon:team,Value=stark,Key=mon:application,Value=Industry System,Key=mon:module,Value=IS"
+  }
+}

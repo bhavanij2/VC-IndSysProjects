@@ -1,0 +1,1006 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VCIS API Gateway
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+
+  RestApiName:
+    Type: String
+    Description: 'The API Name (eg: vcis-pod-credit-exemption-balance)'
+
+  RestApiDescription:
+    Type: String
+    Description: Rest API Description
+
+  StageName:
+    Type: String
+    Description: The name of the API Stage. Default is 'release' stage
+    Default: 'release'
+
+  RestApiCustomDomainName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Rest API Custom Domain Name. Default value is 'api.pod-np.its-plus.com' (NonProd) and 'api.pod.its-plus.com' (Prod)
+
+  LambdaAuthorizerARN:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Lambda Authorizer ARN. Default is '/vcis/${Env}/infra/lambda-authorizer/arn'
+
+  MinimumCompressionSize:
+    Type: Number
+    Default: 0
+    Description: 'Compression or decompression is not applied on the payload if the payload size is smaller than this value. Setting it to zero allows compression for any payload size.'
+
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+
+Resources:
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${RestApiName}-${Env}'
+      Description: !Ref RestApiDescription
+      ApiKeySourceType: HEADER
+      MinimumCompressionSize: !Ref MinimumCompressionSize
+      EndpointConfiguration:
+        Types:
+          - EDGE
+
+    ## Lambda Authorizer
+  ApiGatewayLambdaAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    DependsOn: RestApi
+    Properties:
+      Name: 'vcis-shared-lambda-authorizer'
+      Type: 'REQUEST'
+      AuthorizerResultTtlInSeconds: 0
+      AuthorizerUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaAuthorizerARN}/invocations'
+      IdentitySource: 'method.request.header.Authorization'
+      RestApiId: !Ref RestApi
+
+  Deployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+    - ServicefeePath
+    - ServicefeeadvancePath
+    - ServicefeecalculationPath
+    - ServicefeecalculationcancelPath
+    - ServicefeecalculationcancelexecutionIdPath
+    - ServicefeecalculationcheckfinishedPath
+    - ServicefeecalculationclosePath
+    - ServicefeecalculationcloseexecutionIdPath
+    - ServicefeecalculationstartPath
+    - ServicefeecalendarPath
+    - ServicefeecalendaryearPath
+    - ServicefeecalendaryearyearPath
+    - ServicefeecalendaridPath
+    - ServicefeegroupsPath
+    - ServicefeegroupslistheadofficePath
+    - ServicefeegroupssearchPath
+    - ServicefeegroupssearchheadofficePath
+    - ServicefeegroupsstandardfeePath
+    - ServicefeereportsPath
+    - ServicefeereportsconsolidatedlegacyPath
+    - ServicefeereportsconsolidatedlegacyprocessTypePath
+    - ServicefeereportsconsolidatedPath
+    - ServicefeereportsconsolidatedprocessTypePath
+    - ServicefeereportsdetailedPath
+    - ServicefeereportsdetailedprocessTypePath
+    - ServicefeerolPath
+    - ServicefeerolstatusPath
+    - ServicefeeadvanceOptionsMethod
+    - ServicefeecalculationcancelexecutionIdOptionsMethod
+    - ServicefeecalculationcheckfinishedOptionsMethod
+    - ServicefeecalculationcloseexecutionIdOptionsMethod
+    - ServicefeecalculationstartOptionsMethod
+    - ServicefeecalendarOptionsMethod
+    - ServicefeecalendaryearyearOptionsMethod
+    - ServicefeecalendaridOptionsMethod
+    - ServicefeegroupsOptionsMethod
+    - ServicefeegroupslistheadofficeOptionsMethod
+    - ServicefeegroupssearchOptionsMethod
+    - ServicefeegroupssearchheadofficeOptionsMethod
+    - ServicefeegroupsstandardfeeOptionsMethod
+    - ServicefeereportsOptionsMethod
+    - ServicefeereportsconsolidatedlegacyprocessTypeOptionsMethod
+    - ServicefeereportsconsolidatedprocessTypeOptionsMethod
+    - ServicefeereportsdetailedprocessTypeOptionsMethod
+    - ServicefeerolstatusOptionsMethod
+    Properties:
+      Description: API Deployment
+      RestApiId: !Ref RestApi
+
+  Stage:
+    Type: AWS::ApiGateway::Stage
+    DependsOn: Deployment
+    Properties:
+      RestApiId: !Ref RestApi
+      DeploymentId: !Ref Deployment
+      StageName: !Ref StageName
+
+  ApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    DependsOn: Stage
+    Properties:
+      DomainName: !Ref RestApiCustomDomainName
+      BasePath: !Sub '${RestApiName}-${Env}'
+      RestApiId: !Ref RestApi
+      Stage: !Ref Stage
+
+  # SSM Output Parameters
+  LambdaAuthorizerSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: !Ref ApiGatewayLambdaAuthorizer
+      Description: !Sub ${RestApiName} - Lambda Authorizer ID
+      Name: !Sub '/vcis/${Env}/infra/api-gateway/lambda-auth-id-${RestApiName}-${Env}'
+
+
+  ServicefeePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !GetAtt RestApi.RootResourceId
+      PathPart: "service-fee"
+      RestApiId: !Ref RestApi
+
+  ServicefeeadvancePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeePath
+      PathPart: "advance"
+      RestApiId: !Ref RestApi
+
+  ServicefeeadvanceOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeeadvancePath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeecalculationPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeePath
+      PathPart: "calculation"
+      RestApiId: !Ref RestApi
+
+  ServicefeecalculationcancelPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeecalculationPath
+      PathPart: "cancel"
+      RestApiId: !Ref RestApi
+
+  ServicefeecalculationcancelexecutionIdPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeecalculationcancelPath
+      PathPart: "{executionId}"
+      RestApiId: !Ref RestApi
+
+  ServicefeecalculationcancelexecutionIdOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeecalculationcancelexecutionIdPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeecalculationcheckfinishedPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeecalculationPath
+      PathPart: "checkfinished"
+      RestApiId: !Ref RestApi
+
+  ServicefeecalculationcheckfinishedOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeecalculationcheckfinishedPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeecalculationclosePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeecalculationPath
+      PathPart: "close"
+      RestApiId: !Ref RestApi
+
+  ServicefeecalculationcloseexecutionIdPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeecalculationclosePath
+      PathPart: "{executionId}"
+      RestApiId: !Ref RestApi
+
+  ServicefeecalculationcloseexecutionIdOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeecalculationcloseexecutionIdPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeecalculationstartPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeecalculationPath
+      PathPart: "start"
+      RestApiId: !Ref RestApi
+
+  ServicefeecalculationstartOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeecalculationstartPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeecalendarPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeePath
+      PathPart: "calendar"
+      RestApiId: !Ref RestApi
+
+  ServicefeecalendarOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeecalendarPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeecalendaryearPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeecalendarPath
+      PathPart: "year"
+      RestApiId: !Ref RestApi
+
+  ServicefeecalendaryearyearPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeecalendaryearPath
+      PathPart: "{year}"
+      RestApiId: !Ref RestApi
+
+  ServicefeecalendaryearyearOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeecalendaryearyearPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeecalendaridPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeecalendarPath
+      PathPart: "{id}"
+      RestApiId: !Ref RestApi
+
+  ServicefeecalendaridOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeecalendaridPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeegroupsPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeePath
+      PathPart: "groups"
+      RestApiId: !Ref RestApi
+
+  ServicefeegroupsOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeegroupsPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeegroupslistheadofficePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeegroupsPath
+      PathPart: "listheadoffice"
+      RestApiId: !Ref RestApi
+
+  ServicefeegroupslistheadofficeOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeegroupslistheadofficePath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeegroupssearchPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeegroupsPath
+      PathPart: "search"
+      RestApiId: !Ref RestApi
+
+  ServicefeegroupssearchOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeegroupssearchPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeegroupssearchheadofficePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeegroupsPath
+      PathPart: "searchheadoffice"
+      RestApiId: !Ref RestApi
+
+  ServicefeegroupssearchheadofficeOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeegroupssearchheadofficePath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeegroupsstandardfeePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeegroupsPath
+      PathPart: "standardfee"
+      RestApiId: !Ref RestApi
+
+  ServicefeegroupsstandardfeeOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeegroupsstandardfeePath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeereportsPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeePath
+      PathPart: "reports"
+      RestApiId: !Ref RestApi
+
+  ServicefeereportsOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeereportsPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeereportsconsolidatedlegacyPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeereportsPath
+      PathPart: "consolidated-legacy"
+      RestApiId: !Ref RestApi
+
+  ServicefeereportsconsolidatedlegacyprocessTypePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeereportsconsolidatedlegacyPath
+      PathPart: "{processType}"
+      RestApiId: !Ref RestApi
+
+  ServicefeereportsconsolidatedlegacyprocessTypeOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeereportsconsolidatedlegacyprocessTypePath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeereportsconsolidatedPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeereportsPath
+      PathPart: "consolidated"
+      RestApiId: !Ref RestApi
+
+  ServicefeereportsconsolidatedprocessTypePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeereportsconsolidatedPath
+      PathPart: "{processType}"
+      RestApiId: !Ref RestApi
+
+  ServicefeereportsconsolidatedprocessTypeOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeereportsconsolidatedprocessTypePath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeereportsdetailedPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeereportsPath
+      PathPart: "detailed"
+      RestApiId: !Ref RestApi
+
+  ServicefeereportsdetailedprocessTypePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeereportsdetailedPath
+      PathPart: "{processType}"
+      RestApiId: !Ref RestApi
+
+  ServicefeereportsdetailedprocessTypeOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeereportsdetailedprocessTypePath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  ServicefeerolPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeePath
+      PathPart: "rol"
+      RestApiId: !Ref RestApi
+
+  ServicefeerolstatusPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref ServicefeerolPath
+      PathPart: "status"
+      RestApiId: !Ref RestApi
+
+  ServicefeerolstatusOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref ServicefeerolstatusPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+
+Outputs:
+  Endpoint:
+    Description: Rest Api Endpoint URL
+    Value: !Sub 'https://${RestApiName}-${Env}.execute-api.${AWS::Region}.amazonaws.com'
+
+  RestApiGatewayId:
+    Description: ApiGatewayId
+    Value: !Ref RestApi
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayId'
+
+  RootResourceId:
+    Description: RootResourceId
+    Value: !GetAtt RestApi.RootResourceId
+    Export:
+      Name: !Sub '${AWS::StackName}-RootResourceId'
+
+  LambdaAuthorizerId:
+    Description: LambdaAuthorizerId
+    Value: !Ref ApiGatewayLambdaAuthorizer
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaAuthorizerId'
+
+  ServicefeePath:
+    Value: !Ref ServicefeePath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeePath'
+  ServicefeeadvancePath:
+    Value: !Ref ServicefeeadvancePath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeeadvancePath'
+  ServicefeecalculationPath:
+    Value: !Ref ServicefeecalculationPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeecalculationPath'
+  ServicefeecalculationcancelPath:
+    Value: !Ref ServicefeecalculationcancelPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeecalculationcancelPath'
+  ServicefeecalculationcancelexecutionIdPath:
+    Value: !Ref ServicefeecalculationcancelexecutionIdPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeecalculationcancelexecutionIdPath'
+  ServicefeecalculationcheckfinishedPath:
+    Value: !Ref ServicefeecalculationcheckfinishedPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeecalculationcheckfinishedPath'
+  ServicefeecalculationclosePath:
+    Value: !Ref ServicefeecalculationclosePath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeecalculationclosePath'
+  ServicefeecalculationcloseexecutionIdPath:
+    Value: !Ref ServicefeecalculationcloseexecutionIdPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeecalculationcloseexecutionIdPath'
+  ServicefeecalculationstartPath:
+    Value: !Ref ServicefeecalculationstartPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeecalculationstartPath'
+  ServicefeecalendarPath:
+    Value: !Ref ServicefeecalendarPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeecalendarPath'
+  ServicefeecalendaryearPath:
+    Value: !Ref ServicefeecalendaryearPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeecalendaryearPath'
+  ServicefeecalendaryearyearPath:
+    Value: !Ref ServicefeecalendaryearyearPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeecalendaryearyearPath'
+  ServicefeecalendaridPath:
+    Value: !Ref ServicefeecalendaridPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeecalendaridPath'
+  ServicefeegroupsPath:
+    Value: !Ref ServicefeegroupsPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeegroupsPath'
+  ServicefeegroupslistheadofficePath:
+    Value: !Ref ServicefeegroupslistheadofficePath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeegroupslistheadofficePath'
+  ServicefeegroupssearchPath:
+    Value: !Ref ServicefeegroupssearchPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeegroupssearchPath'
+  ServicefeegroupssearchheadofficePath:
+    Value: !Ref ServicefeegroupssearchheadofficePath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeegroupssearchheadofficePath'
+  ServicefeegroupsstandardfeePath:
+    Value: !Ref ServicefeegroupsstandardfeePath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeegroupsstandardfeePath'
+  ServicefeereportsPath:
+    Value: !Ref ServicefeereportsPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeereportsPath'
+  ServicefeereportsconsolidatedlegacyPath:
+    Value: !Ref ServicefeereportsconsolidatedlegacyPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeereportsconsolidatedlegacyPath'
+  ServicefeereportsconsolidatedlegacyprocessTypePath:
+    Value: !Ref ServicefeereportsconsolidatedlegacyprocessTypePath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeereportsconsolidatedlegacyprocessTypePath'
+  ServicefeereportsconsolidatedPath:
+    Value: !Ref ServicefeereportsconsolidatedPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeereportsconsolidatedPath'
+  ServicefeereportsconsolidatedprocessTypePath:
+    Value: !Ref ServicefeereportsconsolidatedprocessTypePath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeereportsconsolidatedprocessTypePath'
+  ServicefeereportsdetailedPath:
+    Value: !Ref ServicefeereportsdetailedPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeereportsdetailedPath'
+  ServicefeereportsdetailedprocessTypePath:
+    Value: !Ref ServicefeereportsdetailedprocessTypePath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeereportsdetailedprocessTypePath'
+  ServicefeerolPath:
+    Value: !Ref ServicefeerolPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeerolPath'
+  ServicefeerolstatusPath:
+    Value: !Ref ServicefeerolstatusPath
+    Export:
+      Name: !Sub '${AWS::StackName}-ServicefeerolstatusPath'

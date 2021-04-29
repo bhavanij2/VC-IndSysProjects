@@ -1,0 +1,30 @@
+[
+  {
+    "ParameterKey": "S3SourceKey",
+    "ParameterValue": "{{FUNCTION_NAME}}-{{ENV}}"
+  },
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "{{FUNCTION_NAME}}"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "{{ENV}}"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/{{ENV}}/infra/tags/project-module-pod"
+  },
+  {
+    "ParameterKey": "AppAccountLevelResourcesStackName",
+    "ParameterValue": "vcis-app-{{ACCOUNT}}-account-level-resources"
+  },
+  {
+    "ParameterKey": "ApprovalNotificationsStackName",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "CustomTags",
+    "ParameterValue": "{{TAGS}}"
+  }
+]

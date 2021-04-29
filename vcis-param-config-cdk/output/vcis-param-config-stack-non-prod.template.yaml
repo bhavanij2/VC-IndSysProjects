@@ -1,0 +1,181 @@
+Resources:
+  ownerTagSsmParam67D97165:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: GAMITCH
+      Description: /vcis/non-prod/infra/tags/owner
+      Name: /vcis/non-prod/infra/tags/owner
+      Tags:
+        mon:owner: GAMITCH
+        mon:cost-center: 5180-9130-SLR74781
+        mon:project: VC-Industry-System
+        mon:env: non-prod
+        mon:regulated: sox
+        mon:data-classification: internal
+    Metadata:
+      aws:cdk:path: vcis-param-config-stack-non-prod/ownerTagSsmParam/Resource
+  costCenterSsmParam6AD1F3C6:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: 5180-9130-SLR74781
+      Description: /vcis/non-prod/infra/tags/costCenter
+      Name: /vcis/non-prod/infra/tags/costCenter
+      Tags:
+        mon:owner: GAMITCH
+        mon:cost-center: 5180-9130-SLR74781
+        mon:project: VC-Industry-System
+        mon:env: non-prod
+        mon:regulated: sox
+        mon:data-classification: internal
+    Metadata:
+      aws:cdk:path: vcis-param-config-stack-non-prod/costCenterSsmParam/Resource
+  projectSsmParam4AFC7DE8:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: VC-Industry-System
+      Description: /vcis/non-prod/infra/tags/project
+      Name: /vcis/non-prod/infra/tags/project
+      Tags:
+        mon:owner: GAMITCH
+        mon:cost-center: 5180-9130-SLR74781
+        mon:project: VC-Industry-System
+        mon:env: non-prod
+        mon:regulated: sox
+        mon:data-classification: internal
+    Metadata:
+      aws:cdk:path: vcis-param-config-stack-non-prod/projectSsmParam/Resource
+  environmentSsmParam198EC4DC:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: non-prod
+      Description: /vcis/non-prod/infra/tags/env
+      Name: /vcis/non-prod/infra/tags/env
+      Tags:
+        mon:owner: GAMITCH
+        mon:cost-center: 5180-9130-SLR74781
+        mon:project: VC-Industry-System
+        mon:env: non-prod
+        mon:regulated: sox
+        mon:data-classification: internal
+    Metadata:
+      aws:cdk:path: vcis-param-config-stack-non-prod/environmentSsmParam/Resource
+  regulatedSsmParamE6060A51:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: sox
+      Description: /vcis/non-prod/infra/tags/regulated
+      Name: /vcis/non-prod/infra/tags/regulated
+      Tags:
+        mon:owner: GAMITCH
+        mon:cost-center: 5180-9130-SLR74781
+        mon:project: VC-Industry-System
+        mon:env: non-prod
+        mon:regulated: sox
+        mon:data-classification: internal
+    Metadata:
+      aws:cdk:path: vcis-param-config-stack-non-prod/regulatedSsmParam/Resource
+  dataClassificationSsmParamC8D53BB6:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: internal
+      Description: /vcis/non-prod/infra/tags/dataClassification
+      Name: /vcis/non-prod/infra/tags/dataClassification
+      Tags:
+        mon:owner: GAMITCH
+        mon:cost-center: 5180-9130-SLR74781
+        mon:project: VC-Industry-System
+        mon:env: non-prod
+        mon:regulated: sox
+        mon:data-classification: internal
+    Metadata:
+      aws:cdk:path: vcis-param-config-stack-non-prod/dataClassificationSsmParam/Resource
+  vpcCidrListSsmParamE7D200B5:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: 172.18.0.0/19
+      Description: /vcis/non-prod/infra/vpc/input/vpcCidrList
+      Name: /vcis/non-prod/infra/vpc/input/vpcCidrList
+      Tags:
+        mon:owner: GAMITCH
+        mon:cost-center: 5180-9130-SLR74781
+        mon:project: VC-Industry-System
+        mon:env: non-prod
+        mon:regulated: sox
+        mon:data-classification: internal
+    Metadata:
+      aws:cdk:path: vcis-param-config-stack-non-prod/vpcCidrListSsmParam/Resource
+  primaryCentralBastionIpSsmParam4BF8982E:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: 52.22.113.235
+      Description: /vcis/non-prod/infra/vpc/input/primaryCentralBastionIP
+      Name: /vcis/non-prod/infra/vpc/input/primaryCentralBastionIP
+      Tags:
+        mon:owner: GAMITCH
+        mon:cost-center: 5180-9130-SLR74781
+        mon:project: VC-Industry-System
+        mon:env: non-prod
+        mon:regulated: sox
+        mon:data-classification: internal
+    Metadata:
+      aws:cdk:path: vcis-param-config-stack-non-prod/primaryCentralBastionIpSsmParam/Resource
+  secondaryCentralBastionIpSsmParamBAC0B65C:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: 52.39.76.251
+      Description: /vcis/non-prod/infra/vpc/input/secondaryCentralBastionIP
+      Name: /vcis/non-prod/infra/vpc/input/secondaryCentralBastionIP
+      Tags:
+        mon:owner: GAMITCH
+        mon:cost-center: 5180-9130-SLR74781
+        mon:project: VC-Industry-System
+        mon:env: non-prod
+        mon:regulated: sox
+        mon:data-classification: internal
+    Metadata:
+      aws:cdk:path: vcis-param-config-stack-non-prod/secondaryCentralBastionIpSsmParam/Resource
+  bastionHostKeyNameSsmParamA376C6BA:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: vcis-nonprod-keypair
+      Description: /vcis/non-prod/infra/vpc/input/bastionHostKeyName
+      Name: /vcis/non-prod/infra/vpc/input/bastionHostKeyName
+      Tags:
+        mon:owner: GAMITCH
+        mon:cost-center: 5180-9130-SLR74781
+        mon:project: VC-Industry-System
+        mon:env: non-prod
+        mon:regulated: sox
+        mon:data-classification: internal
+    Metadata:
+      aws:cdk:path: vcis-param-config-stack-non-prod/bastionHostKeyNameSsmParam/Resource
+  bastionInstanceTypeSsmParam3E342557:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: t2.nano
+      Description: /vcis/non-prod/infra/vpc/input/bastionInstanceType
+      Name: /vcis/non-prod/infra/vpc/input/bastionInstanceType
+      Tags:
+        mon:owner: GAMITCH
+        mon:cost-center: 5180-9130-SLR74781
+        mon:project: VC-Industry-System
+        mon:env: non-prod
+        mon:regulated: sox
+        mon:data-classification: internal
+    Metadata:
+      aws:cdk:path: vcis-param-config-stack-non-prod/bastionInstanceTypeSsmParam/Resource
+  CDKMetadata:
+    Type: AWS::CDK::Metadata
+    Properties:
+      Modules: aws-cdk=0.24.1,@aws-cdk/aws-iam=0.31.0,@aws-cdk/aws-ssm=0.31.0,@aws-cdk/cdk=0.31.0,@aws-cdk/cx-api=0.31.0,@aws-cdk/region-info=0.31.0,jsii-runtime=node.js/v10.15.0

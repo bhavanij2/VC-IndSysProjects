@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: SSM Param Config for 'common' Infrastructure Pipeline Inputs for all templates
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Description: >-
+      A value used to describe the environment you will deploy to. This value will be used to get values
+      from SSM Parameter Store. Keys in Parameter store should begin with: /vcis/environment.
+    Type: String
+    AllowedValues:
+      # non-prod should be used only for account level infra resources (for non-prod account)
+      - poc
+      - non-prod
+      - prod
+    ConstraintDescription: Must be a non-prod or prod.
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  # Stack name for centralize the S3 log files
+  AccountLevelResourcesStackName:
+    Description: "Stack containing the name of the target bucket for other S3 bucket log files (LoggingTargetBucket)"
+    Type: String
+
+Resources:
+  # CICD Resources
+  SourceBucket:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Delete
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      LoggingConfiguration:
+        DestinationBucketName: 
+          Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-LoggingTargetBucket"
+        LogFilePrefix: !Sub '${AWS::StackName}/log'
+
+  ArtifactBucket:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Delete
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      LoggingConfiguration:
+        DestinationBucketName: 
+          Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-LoggingTargetBucket"
+        LogFilePrefix: !Sub '${AWS::StackName}/log'
+
+Outputs:
+  SourceBucket:
+    Description: >-
+        This bucket is used as the Source for our CodePipeline resources. This bucket will hold our GHE repositories.
+    Value: !Ref SourceBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-SourceBucket'
+
+  ArtifactBucket:
+    Description:  >-
+          This bucket is used to hold artifacts from CodePipeline.
+    Value: !Ref ArtifactBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-ArtifactBucket'

@@ -1,0 +1,14 @@
+{
+  "Parameters" : {
+    "AdminRoleName": "vcis-admin-role-update",
+    "CfnDeveloperRoleName": "vcis-cfn-developer-role-update",
+    "DeveloperRoleName": "vcis-developer-role-update",
+    "CostDashboardRoleName": "vcis-cost-dashboard-role-update",
+    "ServiceCatalogRoleName": "vcis-service-catalog-role-update",
+    "ProjectModuleTag": "/vcis/prod/infra/tags/project-module-value-capture-industry-system",
+    "Env": "prod",
+    "Auth0Username": "vcis-auth0-update",
+    "Auth0PolicyName": "vcis-auth0-policy-update",
+    "VcisAppUsername": "vcis-app-grower-usr-update"
+  }
+}

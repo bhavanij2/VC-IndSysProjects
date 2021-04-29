@@ -1,0 +1,14 @@
+{
+  "Parameters": {
+    "Env": "dev",
+    "ProjectModuleTag": "/vcis/dev/infra/tags/project-module-pod",
+    "FunctionName": "vcis-sam-sample-app-two",
+    "VPCStackName": "vcis-vpc-dev",
+    "AppAccountLevelResourcesStackName": "vcis-app-non-prod-account-level-resources",
+    "ApiGateWayDeploymentUpdateStackName": "vcis-non-prod-pod-api-gateway-update-stage",
+    "CustomTags": "Key=mon:feature,Value=entered-area,Key=mon:team,Value=blackfyre",
+    "RestApiName": "vcis-app-apigw-sam-sample-app-two",
+    "RestApiDescription": "Sample App Api Description",
+    "RestApiCustomDomainName": "/vcis/non-prod/infra/rest-api-domain/name"
+  }
+}

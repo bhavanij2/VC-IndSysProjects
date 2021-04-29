@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VCIS Industry System RDS PostgreSQL Dashboard'
+
+Parameters:
+  PostgreSQLStackName:
+      Type: 'String'
+      Description: The RDS PostgreSQL Stack name
+
+Resources:
+  CloudWatchDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties: 
+      DashboardName:
+        Fn::ImportValue: !Sub "${PostgreSQLStackName}-DatabaseInstanceIdentifier"
+      DashboardBody:
+        Fn::Sub:
+          - '{
+                "widgets": [
+                    {
+                        "type": "alarm",
+                        "x": 0,
+                        "y": 0,
+                        "width": 24,
+                        "height": 3,
+                        "properties": {
+                            "title": "Alarms",
+                            "alarms": [
+                                "${DatabaseMemoryAlarm}",
+                                "${DatabasePrimaryCPUAlarm}",
+                                "${DatabaseConnectionsAlarm}",
+                                "${FreeStorageSpaceAlarm}"
+                            ]
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 0,
+                        "y": 3,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "view": "timeSeries",
+                            "stacked": false,
+                            "metrics": [
+                                [ "AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "${DatabaseInstanceIdentifier}" ]
+                            ],
+                            "region": "${AWS::Region}",
+                            "title": "CPU Utilization",
+                            "period": 300
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 6,
+                        "y": 3,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "metrics": [
+                                [ "AWS/RDS", "FreeableMemory", "DBInstanceIdentifier", "${DatabaseInstanceIdentifier}", { "color": "#2ca02c" } ]
+                            ],
+                            "view": "timeSeries",
+                            "stacked": true,
+                            "region": "${AWS::Region}",
+                            "title": "Freeable Memory",
+                            "period": 300,
+                            "stat": "Average"
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 12,
+                        "y": 9,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "metrics": [
+                                [ "AWS/RDS", "WriteIOPS", "DBInstanceIdentifier", "${DatabaseInstanceIdentifier}", { "color": "#9467bd" } ]
+                            ],
+                            "view": "timeSeries",
+                            "stacked": false,
+                            "region": "${AWS::Region}",
+                            "title": "WriteIOPS",
+                            "stat": "Average",
+                            "period": 300
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 6,
+                        "y": 9,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "view": "timeSeries",
+                            "stacked": false,
+                            "metrics": [
+                                [ "AWS/RDS", "ReadIOPS", "DBInstanceIdentifier", "${DatabaseInstanceIdentifier}" ]
+                            ],
+                            "region": "${AWS::Region}",
+                            "title": "Read IOPS"
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 12,
+                        "y": 3,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "view": "timeSeries",
+                            "stacked": false,
+                            "metrics": [
+                                [ "AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", "${DatabaseInstanceIdentifier}" ]
+                            ],
+                            "region": "${AWS::Region}",
+                            "title": "Database Connections"
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 0,
+                        "y": 9,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "metrics": [
+                                [ "AWS/RDS", "FreeStorageSpace", "DBInstanceIdentifier", "${DatabaseInstanceIdentifier}", { "color": "#7f7f7f" } ]
+                            ],
+                            "view": "timeSeries",
+                            "stacked": true,
+                            "region": "${AWS::Region}",
+                            "title": "Free Storage Space",
+                            "stat": "Average",
+                            "period": 300
+                        }
+                    }
+                ]
+            }'
+          - DatabaseInstanceIdentifier:
+              Fn::ImportValue: !Sub "${PostgreSQLStackName}-DatabaseInstanceIdentifier"
+            DatabaseMemoryAlarm:
+              Fn::ImportValue: !Sub "${PostgreSQLStackName}-DatabaseMemoryAlarm"
+            DatabasePrimaryCPUAlarm:
+              Fn::ImportValue: !Sub "${PostgreSQLStackName}-DatabasePrimaryCPUAlarm"            
+            DatabaseConnectionsAlarm:
+              Fn::ImportValue: !Sub "${PostgreSQLStackName}-DatabaseConnectionsAlarm"
+            FreeStorageSpaceAlarm:
+              Fn::ImportValue: !Sub "${PostgreSQLStackName}-FreeStorageSpaceAlarm"
+    
+Outputs:
+  Dashboard:
+    Description: 'CloudFront Dashboard'
+    Value:  !Sub 'https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${CloudWatchDashboard}'
+    Export:
+      Name: !Sub '${AWS::StackName}-Dashboard'

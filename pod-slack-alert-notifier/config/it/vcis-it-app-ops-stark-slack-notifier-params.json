@@ -1,0 +1,14 @@
+[
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "it"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/it/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "WebhookSSMParameterName",
+    "ParameterValue": "/vcis/it/app/ops/stark-slack-webhook"
+  }
+]

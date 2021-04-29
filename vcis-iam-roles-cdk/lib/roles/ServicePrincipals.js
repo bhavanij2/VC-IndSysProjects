@@ -1,0 +1,8 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+class ServicePrincipals {
+}
+ServicePrincipals.LAMBDA = 'lambda.amazonaws.com';
+ServicePrincipals.API_GW = 'apigateway.amazonaws.com';
+exports.ServicePrincipals = ServicePrincipals;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiU2VydmljZVByaW5jaXBhbHMuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJTZXJ2aWNlUHJpbmNpcGFscy50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOztBQUFBLE1BQWEsaUJBQWlCOztBQUNWLHdCQUFNLEdBQUcsc0JBQXNCLENBQUM7QUFDaEMsd0JBQU0sR0FBRywwQkFBMEIsQ0FBQztBQUZ4RCw4Q0FHQyIsInNvdXJjZXNDb250ZW50IjpbImV4cG9ydCBjbGFzcyBTZXJ2aWNlUHJpbmNpcGFscyB7XG4gICAgc3RhdGljIHJlYWRvbmx5IExBTUJEQSA9ICdsYW1iZGEuYW1hem9uYXdzLmNvbSc7XG4gICAgc3RhdGljIHJlYWRvbmx5IEFQSV9HVyA9ICdhcGlnYXRld2F5LmFtYXpvbmF3cy5jb20nO1xufVxuIl19

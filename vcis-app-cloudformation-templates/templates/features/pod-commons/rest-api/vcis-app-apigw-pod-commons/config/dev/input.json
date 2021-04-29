@@ -1,0 +1,23 @@
+[
+  {
+    "feature": "pod-commons",
+    "migrationBranchName": "VCT-10600",
+    "commitMessagePrefix": "VCT-10600 - POD Commons API",
+    "githubTokenSSM": "/vcis/non-prod/app/github/token-fparo1",
+    "newRestApiName": "vcis-app-apigw-pod-commons",
+    "newRestApiDescription": "POD - Commons API",
+    "pathsToInclude": [
+      "/pod/message-inbox",
+      "/pod/message-inbox/count"
+    ],
+    "originalRestApiId": "gkg1ib9end",
+    "originalRestApiStageName": "dev",
+    "baseBranch": "develop",
+    "tags": {
+      "teamName": "stark",
+      "featureName": "pod-commons",
+      "applicationName": "Industry System",
+      "moduleName": "IS"
+    }
+  }
+]

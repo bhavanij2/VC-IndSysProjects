@@ -1,0 +1,14 @@
+[
+  {
+    "ParameterKey": "RoleName",
+    "ParameterValue": "vcis-admin-role"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/prod/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "prod"
+  }
+]

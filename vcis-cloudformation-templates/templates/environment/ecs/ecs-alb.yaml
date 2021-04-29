@@ -1,0 +1,210 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VCIS Application Load Balancer'
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  VpcId:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Description: >
+      Vpc Id.
+      Default is '/vcis/${Env}/infra/vpc/output/vpc-id'
+
+  PublicSubnets:
+    Type: 'AWS::SSM::Parameter::Value<CommaDelimitedList>'
+    Description: >
+      List of Public Subnet Ids.
+      Default is '/vcis/${Env}/infra/vpc/output/public-subnets'
+
+  LoadBalancerCertificateArn:
+    Description: >
+      Amazon Resource Name (ARN) of the certificate to associate with the load balancer.
+      If set, HTTP requests are redirected to HTTPS.
+      Default is '/vcis/${Env}/infra/certificate/certificate-arn'
+    Type: 'AWS::SSM::Parameter::Value<String>'
+
+  LoadBalancerIdleTimeout:
+    Description: 'The idle timeout value, in seconds.'
+    Type: Number
+    Default: 60
+    MinValue: 1
+    MaxValue: 4000
+
+  InfraOpsSlackNotifierStackName:
+    Description: >-
+      The name of the stack that is exporting the Infra Operational Slack Notifier SNS Topic
+    Type: 'String'
+
+Resources:
+
+  LoadBalancer:
+    Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+    Properties:
+      LoadBalancerAttributes:
+        - Key: 'idle_timeout.timeout_seconds'
+          Value: !Ref LoadBalancerIdleTimeout
+        - Key: 'routing.http2.enabled'
+          Value: 'true'
+      Subnets: !Ref PublicSubnets
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+      Type: application
+
+  HTTPListener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - RedirectConfig:
+            Host: "#{host}"
+            Path: "/#{path}"
+            Port: 443
+            Protocol: "HTTPS"
+            Query: "#{query}"
+            StatusCode: HTTP_301
+          Type: redirect
+
+  HttpsListener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      Certificates:
+        - CertificateArn: !Ref LoadBalancerCertificateArn
+      DefaultActions:
+        - TargetGroupArn: !Ref DefaultTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 443
+      Protocol: HTTPS
+
+  LoadBalancerSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: !Sub '${AWS::StackName}-alb-sg'
+      VpcId: !Ref 'VpcId'
+
+  SecurityGroupUpdate:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: >-
+        A CloudWatch Event Rule that detects changes to security groups
+        and publishes change events to an SNS topic for notification.
+      State: ENABLED
+      Targets:
+        - Arn:
+            Fn::ImportValue: !Sub "${InfraOpsSlackNotifierStackName}-SNSTopicArn"
+          Id: InfraOpsSlackNotifierStackName
+      EventPattern:
+        detail-type:
+          - AWS API Call via CloudTrail
+        resources: [
+            !Join ['-', ['arn:aws:ec2:*:${AWS::AccountId}:security-group/', !Ref LoadBalancerSecurityGroup]]
+          ]
+        detail:
+          eventSource:
+            - ec2.amazonaws.com
+          eventName:
+            - AuthorizeSecurityGroupIngress
+            - AuthorizeSecurityGroupEgress
+            - RevokeSecurityGroupIngress
+            - RevokeSecurityGroupEgress
+            - DeleteSecurityGroup
+
+
+  LoadBalancerSecurityGroupInHttpFromWorld:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref LoadBalancerSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: '0.0.0.0/0'
+
+  LoadBalancerSecurityGroupInHttpsFromWorld:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref LoadBalancerSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: '0.0.0.0/0'
+
+  DefaultTargetGroup:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Properties:
+      VpcId: !Ref 'VpcId'
+      Protocol: 'HTTPS'
+      Port: '443'
+
+  AlbListenerSsmParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value:
+        Ref: HttpsListener
+      Description: 'ALB Listener ARN value; required to associate Listener Rules for this ALB Listener'
+      Name: !Sub '/vcis/${Env}/infra/alb/output/alb-listener'
+
+  AlbSecurityGroupSsmParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value:
+        Ref: LoadBalancerSecurityGroup
+      Description: 'ALB Security Group; required to define security group ingress rules for the ECS/Fargate services backed with ALB'
+      Name: !Sub '/vcis/${Env}/infra/alb/output/alb-security-group'
+
+Outputs:
+  StackName:
+    Description: 'Stack name.'
+    Value: !Sub '${AWS::StackName}'
+  LoadBalancerDNS:
+    Description: 'DNS name for the Application Load Balancer'
+    Value: !GetAtt LoadBalancer.DNSName
+    Export:
+      Name: !Sub '${AWS::StackName}-LoadBalancerDNSName'
+  URL:
+    Description: 'URL to the Application Load Balancer.'
+    Value: !Sub 'https://${LoadBalancer.DNSName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-LoadBalancerURL'
+  LoadBalancerFullName:
+    Description: 'ALB full name for services.'
+    Value: !GetAtt 'LoadBalancer.LoadBalancerFullName'
+    Export:
+      Name: !Sub '${AWS::StackName}-LoadBalancerFullName'
+  LoadBalancerSecurityGroup:
+    Description: 'The Security Group of the Application Load Balancer.'
+    Value: !Ref LoadBalancerSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-LoadBalancerSecurityGroup'
+  ALBHttpsListener:
+    Description: 'ALB HTTPS listener'
+    Value: !Ref HttpsListener
+    Export:
+      Name: !Sub '${AWS::StackName}-HTTPSListener'
+  ALBHttpsListenerSsmParam:
+    Description: 'ALB HTTPS listener - SSM Param'
+    Value: !Ref AlbListenerSsmParam
+    Export:
+      Name: !Sub '${AWS::StackName}-SSM-Param-HTTPSListener'
+  LoadBalancerSecurityGroupSsmParam:
+    Description: 'ALB Security Group - SSM Param'
+    Value: !Ref AlbSecurityGroupSsmParam
+    Export:
+      Name: !Sub '${AWS::StackName}-SSM-Param-LoadBalancerSecurityGroup'

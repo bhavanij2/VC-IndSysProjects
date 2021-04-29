@@ -1,0 +1,26 @@
+[
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "vcis-service-catalog-sam-ci-cd-pipeline-product"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "non-prod"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/non-prod/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "TemplateFileName",
+    "ParameterValue": "templates/application/service-catalog/products/sam-ci-cd-pipeline/sam-ci-cd-pipeline-product.yaml"
+  },
+  {
+    "ParameterKey": "ConfigPath",
+    "ParameterValue": "templates/application/service-catalog/products/sam-ci-cd-pipeline/config/non-prod"
+  },
+  {
+    "ParameterKey": "WorkLoadAccountLevelInputParamsStackName",
+    "ParameterValue": "vcis-non-prod-workloads-account-input-params"
+  }
+]

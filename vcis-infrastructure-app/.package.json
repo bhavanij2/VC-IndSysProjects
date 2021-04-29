@@ -1,0 +1,24 @@
+{
+  "name": "vcis-infrastructure-cdk",
+  "version": "0.1.0",
+  "bin": {
+    "vcis-infrastructure-cdk": "bin/vcis-infrastructure-cdk.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk"
+  },
+  "devDependencies": {
+    "@types/node": "^8.9.4",
+    "aws-cdk": "latest",
+    "typescript": "^3.4.2"
+  },
+  "dependencies": {
+    "@aws-cdk/cdk": "latest",
+    "@monsantoit/vcis-cdk-utils": "latest",
+    "@monsantoit/vcis-iam-roles-cdk": "latest",
+    "@monsantoit/vcis-vpc-cdk": "latest",
+    "source-map-support": "^0.5.12"
+  }
+}

@@ -1,0 +1,517 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VCIS API Gateway
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+
+  RestApiName:
+    Type: String
+    Description: 'The API Name (eg: vcis-pod-credit-exemption-balance)'
+
+  RestApiDescription:
+    Type: String
+    Description: Rest API Description
+
+  StageName:
+    Type: String
+    Description: The name of the API Stage. Default is 'release' stage
+    Default: 'release'
+
+  RestApiCustomDomainName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Rest API Custom Domain Name. Default value is 'api.pod-np.its-plus.com' (NonProd) and 'api.pod.its-plus.com' (Prod)
+
+  LambdaAuthorizerStackName:
+    Type: String
+    Description: Stack that exports Lambda Authorizer ARN.
+
+  MinimumCompressionSize:
+    Type: Number
+    Default: 0
+    Description: 'Compression or decompression is not applied on the payload if the payload size is smaller than this value. Setting it to zero allows compression for any payload size.'
+
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+
+Mappings:
+  EnvStageVarMapping:
+    poc:
+      EnvStageVar: 'DEV'
+    dev:
+      EnvStageVar: 'DEV'
+    it:
+      EnvStageVar: 'TEST'
+    prod:
+      EnvStageVar: 'PROD'
+
+Resources:
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${RestApiName}-${Env}'
+      Description: !Ref RestApiDescription
+      ApiKeySourceType: HEADER
+      MinimumCompressionSize: !Ref MinimumCompressionSize
+      EndpointConfiguration:
+        Types:
+          - EDGE
+
+    ## Lambda Authorizer
+  ApiGatewayLambdaAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    DependsOn: RestApi
+    Properties:
+      Name: !Sub 'vcis-pod-ping-authorizer-${Env}'
+      Type: 'REQUEST'
+      AuthorizerResultTtlInSeconds: 0
+      AuthorizerUri: !Join
+        - ''
+        - - 'arn:aws:apigateway:'
+          - !Ref 'AWS::Region'
+          - ':lambda:path/2015-03-31/functions/'
+          - Fn::ImportValue: !Sub "${LambdaAuthorizerStackName}-PodPingAuthorizer"
+          - '/invocations'
+      IdentitySource: 'method.request.header.Authorization'
+      RestApiId: !Ref RestApi
+
+  Deployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+    - PodPath
+    - PodrolPath
+    - PodrolfixedvolumePath
+    - PodrolfixedvolumebulkPath
+    - PodrolfixedvolumebulklistPath
+    - PodrolfixedvolumebulkxlsxPath
+    - PodrolfixedvolumebulkxlsxbulkidPath
+    - PodrolfixedvolumepartnerPath
+    - PodrolfixedvolumepartnerdocumentPath
+    - PodrolfixedvolumepartnerdocumentsumPath
+    - PodrolfixedvolumeidPath
+    - PodrolfixedvolumeOptionsMethod
+    - PodrolfixedvolumebulkOptionsMethod
+    - PodrolfixedvolumebulklistOptionsMethod
+    - PodrolfixedvolumebulkxlsxbulkidOptionsMethod
+    - PodrolfixedvolumepartnerOptionsMethod
+    - PodrolfixedvolumepartnerdocumentOptionsMethod
+    - PodrolfixedvolumepartnerdocumentsumOptionsMethod
+    - PodrolfixedvolumeidOptionsMethod
+    Properties:
+      Description: API Deployment
+      RestApiId: !Ref RestApi
+
+  Stage:
+    Type: AWS::ApiGateway::Stage
+    DependsOn: Deployment
+    Properties:
+      RestApiId: !Ref RestApi
+      DeploymentId: !Ref Deployment
+      StageName: !Ref StageName
+      Variables:
+        environment: !FindInMap [EnvStageVarMapping, !Ref Env, EnvStageVar]
+
+  ApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    DependsOn: Stage
+    Properties:
+      DomainName: !Ref RestApiCustomDomainName
+      BasePath: !Sub '${RestApiName}-${Env}'
+      RestApiId: !Ref RestApi
+      Stage: !Ref Stage
+
+  PodPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !GetAtt RestApi.RootResourceId
+      PathPart: "pod"
+      RestApiId: !Ref RestApi
+
+  PodrolPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodPath
+      PathPart: "rol"
+      RestApiId: !Ref RestApi
+
+  PodrolfixedvolumePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodrolPath
+      PathPart: "fixed-volume"
+      RestApiId: !Ref RestApi
+
+  PodrolfixedvolumeOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodrolfixedvolumePath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodrolfixedvolumebulkPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodrolfixedvolumePath
+      PathPart: "bulk"
+      RestApiId: !Ref RestApi
+
+  PodrolfixedvolumebulkOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodrolfixedvolumebulkPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodrolfixedvolumebulklistPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodrolfixedvolumebulkPath
+      PathPart: "list"
+      RestApiId: !Ref RestApi
+
+  PodrolfixedvolumebulklistOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodrolfixedvolumebulklistPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodrolfixedvolumebulkxlsxPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodrolfixedvolumebulkPath
+      PathPart: "xlsx"
+      RestApiId: !Ref RestApi
+
+  PodrolfixedvolumebulkxlsxbulkidPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodrolfixedvolumebulkxlsxPath
+      PathPart: "{bulkid}"
+      RestApiId: !Ref RestApi
+
+  PodrolfixedvolumebulkxlsxbulkidOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodrolfixedvolumebulkxlsxbulkidPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodrolfixedvolumepartnerPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodrolfixedvolumePath
+      PathPart: "partner"
+      RestApiId: !Ref RestApi
+
+  PodrolfixedvolumepartnerOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodrolfixedvolumepartnerPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodrolfixedvolumepartnerdocumentPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodrolfixedvolumepartnerPath
+      PathPart: "{document}"
+      RestApiId: !Ref RestApi
+
+  PodrolfixedvolumepartnerdocumentOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodrolfixedvolumepartnerdocumentPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodrolfixedvolumepartnerdocumentsumPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodrolfixedvolumepartnerdocumentPath
+      PathPart: "sum"
+      RestApiId: !Ref RestApi
+
+  PodrolfixedvolumepartnerdocumentsumOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodrolfixedvolumepartnerdocumentsumPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  PodrolfixedvolumeidPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref PodrolfixedvolumePath
+      PathPart: "{id}"
+      RestApiId: !Ref RestApi
+
+  PodrolfixedvolumeidOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref PodrolfixedvolumeidPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+
+Outputs:
+  Endpoint:
+    Description: Rest Api Endpoint URL
+    Value: !Sub 'https://${RestApiName}-${Env}.execute-api.${AWS::Region}.amazonaws.com'
+
+  RestApiGatewayId:
+    Description: ApiGatewayId
+    Value: !Ref RestApi
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayId'
+
+  RootResourceId:
+    Description: RootResourceId
+    Value: !GetAtt RestApi.RootResourceId
+    Export:
+      Name: !Sub '${AWS::StackName}-RootResourceId'
+
+  LambdaAuthorizerId:
+    Description: LambdaAuthorizerId
+    Value: !Ref ApiGatewayLambdaAuthorizer
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaAuthorizerId'
+
+  PodPath:
+    Value: !Ref PodPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodPath'
+  PodrolPath:
+    Value: !Ref PodrolPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodrolPath'
+  PodrolfixedvolumePath:
+    Value: !Ref PodrolfixedvolumePath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodrolfixedvolumePath'
+  PodrolfixedvolumebulkPath:
+    Value: !Ref PodrolfixedvolumebulkPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodrolfixedvolumebulkPath'
+  PodrolfixedvolumebulklistPath:
+    Value: !Ref PodrolfixedvolumebulklistPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodrolfixedvolumebulklistPath'
+  PodrolfixedvolumebulkxlsxPath:
+    Value: !Ref PodrolfixedvolumebulkxlsxPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodrolfixedvolumebulkxlsxPath'
+  PodrolfixedvolumebulkxlsxbulkidPath:
+    Value: !Ref PodrolfixedvolumebulkxlsxbulkidPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodrolfixedvolumebulkxlsxbulkidPath'
+  PodrolfixedvolumepartnerPath:
+    Value: !Ref PodrolfixedvolumepartnerPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodrolfixedvolumepartnerPath'
+  PodrolfixedvolumepartnerdocumentPath:
+    Value: !Ref PodrolfixedvolumepartnerdocumentPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodrolfixedvolumepartnerdocumentPath'
+  PodrolfixedvolumepartnerdocumentsumPath:
+    Value: !Ref PodrolfixedvolumepartnerdocumentsumPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodrolfixedvolumepartnerdocumentsumPath'
+  PodrolfixedvolumeidPath:
+    Value: !Ref PodrolfixedvolumeidPath
+    Export:
+      Name: !Sub '${AWS::StackName}-PodrolfixedvolumeidPath'

@@ -1,0 +1,8 @@
+{
+  "Parameters": {
+    "FunctionName": "vcis-app-sam-sample-app",
+    "Stage": "DEV",
+    "AccountLevelResourcesStackName": "vcis-app-non-prod-account-level-resources",
+    "ApiGwStackName": "vcis-apigw-sam-sample-app-poc"
+  }
+}

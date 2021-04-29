@@ -1,0 +1,7 @@
+{
+  "Parameters" : {
+    "ImageName": "ecr-update",
+    "Env": "dev",
+    "ProjectModuleTag": "/vcis/dev/infra/tags/project-module-value-capture-industry-system"
+  }
+}

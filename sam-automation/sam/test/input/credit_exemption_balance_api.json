@@ -1,0 +1,28 @@
+{
+  "functionRepositoryName": "pod-credit-exemption-balance-api",
+  "originalFunctionArn": "arn:aws:lambda:us-east-1:285453578300:function:brazil-value-capture-credit-exemption-balance-api",
+  "newLogGroupName": "LannisterGroup",
+  "newRestApiName": "vcis-app-apigw-pod-credit-exemption-balance-extract",
+  "originalRestApiId": "gkg1ib9end",
+  "originalRestApiStageName": "dev",
+  "baseBranch": "develop",
+  "tags": {
+    "teamName": "lannister",
+    "featureName": "credit-exemption-balance",
+    "applicationName": "Industry System",
+    "moduleName": "IS"
+  },
+  "consumerSQS": {
+    "stack": "SharedResources1StackName",
+    "name": "MyQueueConsumerArn",
+    "batchSize": 1
+  },
+  "producerSQS": [{
+    "stack": "SharedResources1StackName",
+    "name": "MyQueueProducerArn"
+  }],
+  "producerSNS": [{
+    "stack": "SharedResources2StackName",
+    "name": "MySNSProducerArn"
+  }]
+}

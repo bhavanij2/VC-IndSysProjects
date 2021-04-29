@@ -1,0 +1,32 @@
+version: 0.2
+env:
+  parameter-store:
+    NPM_AUTH_TOKEN: "/vcis/common/infra/npm/auth-token"
+phases:
+  install:
+    runtime-versions:
+      nodejs: 8
+    commands:
+      - apt-get update -y
+      - node --version
+      - npm config set registry https://registry.npmjs.org/
+      - npm config set @monsantoit:registry https://npm.platforms.engineering
+      - npm config set //npm.platforms.engineering/:_authToken $NPM_AUTH_TOKEN
+      - npm install
+      - npm --version
+  pre_build:
+    commands:
+      - npm test
+  build:
+    commands:
+      #Replacing timestamp placeholder with the current time inside the sam template (Workaround fix. More info: https://medium.com/@ngchiwang/aws-apigateway-deployment-not-update-3e04fcffe85b)
+      - export today=$(date +%s)
+      - sed -i "s/\$timestamp/$today/g" sam.yaml
+      - aws cloudformation package --template sam.yaml --s3-bucket ${BUILD_OUTPUT_BUCKET} --output-template sam-output.yaml
+artifacts:
+  files:
+    - sam-output.yaml
+    - config/cfn/${ENV}/sam-config.json
+  discard-paths: yes
+  type: zip
+  name: {{FUNCTION_NAME}}-${ENV}

@@ -1,0 +1,47 @@
+[
+    {
+      "ParameterKey": "Env",
+      "ParameterValue": "dev"
+    },
+    {
+      "ParameterKey": "ProjectModuleTag",
+      "ParameterValue": "/vcis/dev/infra/tags/project-module-value-capture-industry-system"
+    },
+    {
+      "ParameterKey": "NodeType",
+      "ParameterValue": "cache.t2.micro"
+    },
+    {
+      "ParameterKey": "VPCStackName",
+      "ParameterValue": "vcis-vpc-dev"
+    },
+    {
+      "ParameterKey": "ClusterName",
+      "ParameterValue": "mm-redis"
+    },
+    {
+      "ParameterKey": "Engine",
+      "ParameterValue": "redis"
+    },
+    {
+      "ParameterKey": "NumCacheNodes",
+      "ParameterValue": "3"
+    },
+    {
+      "ParameterKey": "AtRestEncryptionEnabled",
+      "ParameterValue": "true"
+    },
+    {
+      "ParameterKey": "TransitEncryptionEnabled",
+      "ParameterValue": "true"
+    },
+    {
+      "ParameterKey": "AuthToken",
+      "ParameterValue": "mysterymachineredisfoundation"
+    },
+    {
+      "ParameterKey": "NotificationStackName",
+      "ParameterValue": "vcis-non-prod-infra-ops-slack-notifier"
+    }
+  ]
+  

@@ -1,0 +1,53 @@
+{
+  "Parameters": [
+    {
+      "Name": "/vcis/non-prod/infra/tags/input/cost-center",
+      "Type": "String",
+      "Value": "5180-9130-SLR74781",
+      "Version": 1,
+      "LastModifiedDate": "2019-07-10T19:32:00.225Z",
+      "ARN": "arn:aws:ssm:us-east-1:578248469025:parameter/vcis/non-prod/infra/tags/input/cost-center"
+    },
+    {
+      "Name": "/vcis/non-prod/infra/tags/input/data-classification",
+      "Type": "String",
+      "Value": "internal",
+      "Version": 1,
+      "LastModifiedDate": "2019-07-10T19:33:58.283Z",
+      "ARN": "arn:aws:ssm:us-east-1:578248469025:parameter/vcis/non-prod/infra/tags/input/data-classification"
+    },
+    {
+      "Name": "/vcis/non-prod/infra/tags/input/env",
+      "Type": "String",
+      "Value": "non-prod",
+      "Version": 1,
+      "LastModifiedDate": "2019-07-10T19:34:56.301Z",
+      "ARN": "arn:aws:ssm:us-east-1:578248469025:parameter/vcis/non-prod/infra/tags/input/env"
+    },
+    {
+      "Name": "/vcis/non-prod/infra/tags/input/owner",
+      "Type": "String",
+      "Value": "GAMITCH",
+      "Version": 1,
+      "LastModifiedDate": "2019-07-10T19:36:24.382Z",
+      "ARN": "arn:aws:ssm:us-east-1:578248469025:parameter/vcis/non-prod/infra/tags/input/owner"
+    },
+    {
+      "Name": "/vcis/non-prod/infra/tags/input/project",
+      "Type": "String",
+      "Value": "VC-Industry-System",
+      "Version": 1,
+      "LastModifiedDate": "2019-07-10T19:35:37.514Z",
+      "ARN": "arn:aws:ssm:us-east-1:578248469025:parameter/vcis/non-prod/infra/tags/input/project"
+    },
+    {
+      "Name": "/vcis/non-prod/infra/tags/input/regulated",
+      "Type": "String",
+      "Value": "sox",
+      "Version": 1,
+      "LastModifiedDate": "2019-07-10T19:37:02.920Z",
+      "ARN": "arn:aws:ssm:us-east-1:578248469025:parameter/vcis/non-prod/infra/tags/input/regulated"
+    }
+  ],
+  "InvalidParameters": []
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "prod"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/prod/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "InfraOpsSlackNotifierStackName",
+    "ParameterValue": "vcis-prod-infra-ops-slack-notifier"
+  },
+  {
+    "ParameterKey": "InfraSecuritySlackNotifierStackName",
+    "ParameterValue": "vcis-prod-infra-security-slack-notifier"
+  }
+]

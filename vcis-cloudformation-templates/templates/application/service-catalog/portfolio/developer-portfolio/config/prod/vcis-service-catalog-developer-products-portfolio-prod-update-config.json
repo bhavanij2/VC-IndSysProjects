@@ -1,0 +1,10 @@
+{
+  "Parameters" : {
+    "Env": "prod",
+    "ProjectModuleTag": "/vcis/prod/infra/tags/project-module-value-capture-industry-system",
+    "SAMCiCdPipelineProductStackName": "vcis-service-catalog-sam-ci-cd-pipeline-product-prod",
+    "AppInfraCiCdPipelineProductStackName": "vcis-service-catalog-app-infra-ci-cd-pipeline-product-prod",
+    "UiCiCdPipelineProductStackName": "vcis-service-catalog-ui-ci-cd-pipeline-product-prod",
+    "IAMStackName": "vcis-iam-prod"
+  }
+}

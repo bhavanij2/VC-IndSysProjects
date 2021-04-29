@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Infrastracture resources with AWS Account scope (not Environment)
+Parameters:
+  Env:
+    Description: >-
+      A value used to describe the environment you will deploy to. This value will be used to get values
+      from SSM Parameter Store. Keys in Parameter store should begin with: /vcis/environment.
+    Type: String
+    AllowedValues:
+      # non-prod should be used only for account level infra resources (for non-prod account)
+      - non-prod
+      - prod
+    ConstraintDescription: Must be a non-prod or prod.
+
+  # SSM parameter for Project Module tag
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+Conditions:
+  IsProdEnv: !Equals [!Ref Env, 'prod']
+
+# Transformation macro for tagging
+Transform: [VcisCommonTagsMacro]
+
+Resources:
+  # DEPRECATED! Lambda Authorizer (temporary solution)
+  LambdaAuthArnSSMParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Description: Lambda Authorizer ARN
+      Name: !Sub '/vcis/${Env}/infra/lambda-authorizer/arn'
+      Value: !If
+        - IsProdEnv
+        - arn:aws:lambda:us-east-1:350260138091:function:brazil-value-capture-pod-ping-authorizer
+        - arn:aws:lambda:us-east-1:285453578300:function:brazil-value-capture-pod-ping-authorizer
+
+  # LogGroups
+  LannisterLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: vcis-app-lannister
+      RetentionInDays: 365 #Recheck this with CloudEng.
+
+  StarkLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: vcis-app-stark
+      RetentionInDays: 365 #Recheck this with CloudEng.
+
+  WhiteWalkersLogGroup:
+    Type: AWS::Logs::Group
+    Properties:
+      LogGroupName: vcis-app-whitewalkers
+      RetentionInDays: 365 #Recheck this with CloudEng.
+
+  #S3 buckets
+  SourceBucket:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Delete
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+
+  ArtifactBucket:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Delete
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+
+Outputs:
+  LannisterLogGroup:
+    Description: Lannister Log Group
+    Value: !Ref LannisterLogGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-LannisterLogGroup'
+
+  StarkLogGroup:
+    Description: Stark Log Group
+    Value: !Ref StarkLogGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-StarkLogGroup'
+
+  WhiteWalkersLogGroup:
+    Description: WhiteWalkers Log Group
+    Value: !Ref WhiteWalkersLogGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-WhiteWalkersLogGroup'
+
+  SourceBucket:
+    Description: >-
+      This bucket is used as the Source for our Infra CodePipeline resources. This bucket will hold our GHE repositories.
+    Value: !Ref SourceBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-SourceBucket'
+
+  ArtifactBucket:
+    Description:  >-
+      This bucket is used to hold artifacts from Infra CodePipeline.
+    Value: !Ref ArtifactBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-ArtifactBucket'

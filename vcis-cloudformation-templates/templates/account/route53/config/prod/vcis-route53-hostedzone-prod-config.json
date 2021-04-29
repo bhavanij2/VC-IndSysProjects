@@ -1,0 +1,10 @@
+{
+  "Parameters": {
+    "Env": "prod",
+    "ProjectModuleTag": "/vcis/prod/infra/tags/project-module-value-capture-industry-system",
+    "RdsDomainName": "rds.vcis.internal",
+    "RedisDomainName": "redis.vcis.internal",
+    "VpcStackNamePROD": "vcis-vpc-prod",
+    "VpcRegion": "us-east-1"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "newRestApiName": "vcis-app-apigw-pod-season-closing",
+  "newRestApiDescription": "POD - Season Closing",
+  "migrationBranchName": "VCT-10607_season_closing_apigw",
+  "commitMessagePrefix": "VCT-10607 - Season closing Api Gw",
+  "githubTokenSSM": "/vcis/non-prod/app/github/token-eppmx",
+  "pathsToInclude": [
+    "/pod/season-closing/export/xlsx/{filename}/{language}",
+    "/pod/season-closing/load",
+    "/pod/season-closing/non-fixed-grower",
+    "/pod/season-closing/non-fixed-grower/bulk/",
+    "/pod/season-closing/non-fixed-grower/bulk/status",
+    "/pod/season-closing/non-fixed-grower/bulk/xlsx/{bulkid}",
+    "/pod/season-closing/non-fixed-grower/delete/{year}/{podheadofficedocument}",
+    "/pod/season-closing/non-fixed-grower/report/xlsx/{filename}/{language}",
+    "/pod/season-closing/non-fixed-grower/{id}",
+    "/pod/season-closing/save",
+    "/pod/season-closing/submit",
+    "/pod/season-closing/workflow",
+    "/pod/season-closing/workflow/approve",
+    "/pod/season-closing/workflow/reject",
+    "/pod/season-closing/{id}",
+    "/pod/season-closing/{id}/non-fixed-grower/{nonFixedGrowerId}"
+  ],
+  "originalRestApiId": "gkg1ib9end",
+  "originalRestApiStageName": "dev",
+  "baseBranch": "develop",
+  "tags": {
+    "teamName": "stark",
+    "featureName": "pod-season-closing",
+    "applicationName": "Industry System",
+    "moduleName": "IS"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "Parameters" : {
+    "Env": "dev",
+    "RestApiName" : "vcis-app-apigw-grower-balance",
+    "RestApiDescription" : "POD - Grower Balance API",
+    "LambdaAuthorizerARN" : "/vcis/non-prod/infra/lambda-authorizer/arn",
+    "RestApiCustomDomainName" : "/vcis/non-prod/infra/rest-api-domain/name",
+    "ProjectModuleTag": "/vcis/dev/infra/tags/project-module-value-capture-industry-system",
+    "CustomTags": "Key=mon:feature,Value=Grower balance,Key=mon:team,Value=lannister,Key=mon:application,Value=Industry System,Key=mon:module,Value=IS"
+  }
+}

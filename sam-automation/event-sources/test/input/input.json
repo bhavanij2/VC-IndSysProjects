@@ -1,0 +1,23 @@
+[
+  {
+    "baseBranch": "test",
+    "tags": {
+      "teamName": "stark",
+      "featureName": "pod-rol",
+      "applicationName": "Industry System",
+      "moduleName": "IS"
+    },
+    "feature": "pod-rol",
+    "queues": [
+      {
+        "name": "brazil-value-capture-pod-participant-delivery-bulk-it",
+        "topicsArns": [
+          "arn:aws:sns:us-east-1:285453578300:brazil-value-capture-pod-participant-deliveries-updated-topic-it"
+        ]
+      }
+    ],
+    "topics": [
+      "arn:aws:sns:us-east-1:285453578300:brazil-value-capture-pod-participant-deliveries-updated-topic-it"
+    ]
+  }
+]

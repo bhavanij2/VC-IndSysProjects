@@ -1,0 +1,21 @@
+{
+  "app": "node bin/vcis-infrastructure-cdk.js",
+  "context": {
+    "InputParameters": {
+      "prod": {
+        "VpcCidr": "172.19.0.0/19",
+        "PrimaryCentralBastionIP": "52.22.113.235",
+        "SecondaryCentralBastionIP": "52.39.76.251",
+        "BastionHostKeyName": "vcis-test-keypair",
+        "BastionInstanceType": "t2.nano"
+      },
+      "non-prod": {
+        "VpcCidr": "172.18.0.0/19",
+        "PrimaryCentralBastionIP": "52.22.113.235",
+        "SecondaryCentralBastionIP": "52.39.76.251",
+        "BastionHostKeyName": "vcis-test-keypair",
+        "BastionInstanceType": "t2.nano"
+      }
+    }
+  }
+}

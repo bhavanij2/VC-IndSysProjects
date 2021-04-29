@@ -1,0 +1,144 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VCIS SSM Param Config for Tags'
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+      - non-prod
+    ConstraintDescription: Must be either poc, dev, it, prod or non-prod for shared resources.
+
+  # Stack name for centralize the S3 log files
+  AccountLevelResourcesStackName:
+    Description: "Stack name containing the name of the target bucket for other S3 bucket log files (LoggingTargetBucket)"
+    Type: String
+
+Mappings:
+  ValuesMap:
+    poc:
+      objectKeySuffix: 'non-prod'
+    dev:
+      objectKeySuffix: 'non-prod'
+    it:
+      objectKeySuffix: 'non-prod'
+    non-prod:
+      objectKeySuffix: 'non-prod'
+    prod:
+      objectKeySuffix: 'prod'
+
+Resources:
+  CostCenterSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Cost Center Tag
+      Name: !Sub '/vcis/${Env}/infra/tags/cost-center'
+      Type: String
+      Value: '5180-9130-SLR74781'
+
+  DataClassificationSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Data Classification Tag
+      Name: !Sub '/vcis/${Env}/infra/tags/data-classification'
+      Type: String
+      Value: 'internal'
+
+  EnvSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Environment in which the resources are deployed
+      Name: !Sub '/vcis/${Env}/infra/tags/env'
+      Type: String
+      Value: !Ref Env
+
+  OwnerSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Resource Owner
+      Name: !Sub '/vcis/${Env}/infra/tags/owner'
+      Type: String
+      Value: 'GAMITCH'
+
+  ProjectSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Project Name
+      Name: !Sub '/vcis/${Env}/infra/tags/project'
+      Type: String
+      Value: 'VC-Industry-System'
+
+  ValueCaptureProjectModuleSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Project Name
+      Name: !Sub '/vcis/${Env}/infra/tags/project-module-value-capture-industry-system'
+      Type: String
+      Value: 'ValueCaptureIndustrySystem'
+
+  SalesProjectModuleSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Project Name
+      Name: !Sub '/vcis/${Env}/infra/tags/project-module-sales'
+      Type: String
+      Value: 'Sales'
+
+  MultiplicationProjectModuleSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Project Name
+      Name: !Sub '/vcis/${Env}/infra/tags/project-module-multiplication'
+      Type: String
+      Value: 'Multiplication'
+
+  PodProjectModuleSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Project Name
+      Name: !Sub '/vcis/${Env}/infra/tags/project-module-pod'
+      Type: String
+      Value: 'POD'
+
+  LegallySavedSeedsProjectModuleSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Project Name
+      Name: !Sub '/vcis/${Env}/infra/tags/project-module-legally-saved-seeds'
+      Type: String
+      Value: 'LegallySavedSeeds'
+
+  MasterDataProjectModuleSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Project Name
+      Name: !Sub '/vcis/${Env}/infra/tags/project-module-master-data'
+      Type: String
+      Value: 'MasterData'
+
+  RegulatedSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Regulation Condition
+      Name: !Sub '/vcis/${Env}/infra/tags/regulated'
+      Type: String
+      Value: 'sox'
+
+  #S3 Bucket
+  S3ArtifactStoreBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: !Join
+        - '-'
+        - - 'vcis-cloudformation-macros'
+          - !FindInMap [ValuesMap, !Ref Env, objectKeySuffix]
+      VersioningConfiguration:
+        Status: Enabled
+      LoggingConfiguration:
+        DestinationBucketName: !Ref LoggingTargetBucketName
+        LogFilePrefix: !Sub '${AWS::StackName}/log'
+      

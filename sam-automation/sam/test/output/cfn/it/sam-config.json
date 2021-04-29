@@ -1,0 +1,13 @@
+{
+  "Parameters": {
+    "FunctionName": "vcis-app-credit-exemption-balance-api",
+    "Env": "it",
+    "AppAccountLevelResourcesStackName": "vcis-app-non-prod-account-level-resources",
+    "KMS": "/vcis/it/app/kms/sharedAccount",
+    "ApiGwStackName": "-",
+    "ApiGateWayDeploymentUpdateStackName": "vcis--pod-api-gateway-update-stage",
+    "VPCStackName": "vcis-vpc-it",
+    "ProjectModuleTag": "/vcis/it/infra/tags/project-module-value-capture-industry-system",
+    "CustomTags": "Key=mon:feature,Value=credit-exemption-balance,Key=mon:team,Value=lannister,Key=mon:application,Value=Industry System,Key=mon:module,Value=IS"
+  }
+}

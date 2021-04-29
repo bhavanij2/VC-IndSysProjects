@@ -1,0 +1,10 @@
+#!/usr/bin/env node
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+require("source-map-support/register");
+const cdk = require("@aws-cdk/cdk");
+const hello_test_app_stack_1 = require("../lib/hello-test-app-stack");
+const app = new cdk.App();
+new hello_test_app_stack_1.HelloTestAppStack(app, 'HelloTestAppStack');
+app.run();
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaGVsbG8tdGVzdC1hcHAuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJoZWxsby10ZXN0LWFwcC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7QUFDQSx1Q0FBcUM7QUFDckMsb0NBQXFDO0FBQ3JDLHNFQUFnRTtBQUVoRSxNQUFNLEdBQUcsR0FBRyxJQUFJLEdBQUcsQ0FBQyxHQUFHLEVBQUUsQ0FBQztBQUMxQixJQUFJLHdDQUFpQixDQUFDLEdBQUcsRUFBRSxtQkFBbUIsQ0FBQyxDQUFDO0FBQ2hELEdBQUcsQ0FBQyxHQUFHLEVBQUUsQ0FBQyIsInNvdXJjZXNDb250ZW50IjpbIiMhL3Vzci9iaW4vZW52IG5vZGVcbmltcG9ydCAnc291cmNlLW1hcC1zdXBwb3J0L3JlZ2lzdGVyJztcbmltcG9ydCBjZGsgPSByZXF1aXJlKCdAYXdzLWNkay9jZGsnKTtcbmltcG9ydCB7IEhlbGxvVGVzdEFwcFN0YWNrIH0gZnJvbSAnLi4vbGliL2hlbGxvLXRlc3QtYXBwLXN0YWNrJztcblxuY29uc3QgYXBwID0gbmV3IGNkay5BcHAoKTtcbm5ldyBIZWxsb1Rlc3RBcHBTdGFjayhhcHAsICdIZWxsb1Rlc3RBcHBTdGFjaycpO1xuYXBwLnJ1bigpO1xuIl19

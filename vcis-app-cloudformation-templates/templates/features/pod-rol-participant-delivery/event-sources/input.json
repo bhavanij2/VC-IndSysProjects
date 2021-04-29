@@ -1,0 +1,22 @@
+{
+  "baseBranch": "develop",
+  "migrationBranchName": "VCT-10596_pod-rol-participant-delivery-event-sources",
+  "commitMessagePrefix": "VCT-10596 - POD Rol Participant Delivery Event Sources",
+  "githubTokenSSM": "/vcis/non-prod/app/github/token-gkngg",
+  "tags": {
+    "teamName": "stark",
+    "featureName": "pod-rol-participant-delivery",
+    "applicationName": "Industry System",
+    "moduleName": "IS"
+  },
+  "feature": "pod-rol-participant-delivery",
+  "queues": [
+    {
+      "name": "brazil-value-capture-pod-participant-delivery-bulk-dev",
+      "withRedrivePolicy": true
+    }
+  ],
+  "topics": [
+    "arn:aws:sns:us-east-1:285453578300:brazil-value-capture-pod-participant-deliveries-updated-topic-dev"
+  ]
+}

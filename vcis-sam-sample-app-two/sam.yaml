@@ -1,0 +1,280 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: ['AWS::Serverless-2016-10-31', VcisCommonTagsMacro]
+Description: >
+  vcis-sam-sample-app-two
+
+  Sample SAM Template for vcis-sam-sample-app-two
+
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+# Lambda Function Params
+  FunctionName:
+    Description: "Function Name. Env will be added to the name: {FunctionName}-{Env}"
+    Type: String
+    Default: vcis-sam-sample-app-two
+  Timeout:
+    Description: "Timeout [s]"
+    Type: Number
+    Default: 60
+  MemorySize:
+    Description: "Memory Size [MB]"
+    Type: Number
+    Default: 128
+  VPCStackName:
+    Description: "VPC Stack name"
+    Type: String
+  AppAccountLevelResourcesStackName:
+    Description: "Account Level Resources Stack Name"
+    Type: String
+  ApiGateWayDeploymentUpdateStackName:
+    Description: "API Gateway deployment update stage"
+    Type: String
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+# Rest Api Params
+  RestApiName:
+    Description: "Rest Api Name. Env will be added to the name: {RestApiName}-{Env}"
+    Type: String
+    Default: vcis-sam-sample-app-two
+  RestApiDescription:
+    Description: "Rest Api Description. Env will be added to the name: {RestApiDescription}-{Env}"
+    Type: String
+    Default: Vcis SAM Sample App Two Api
+  StageName:
+    Type: String
+    Description: The name of the API Stage. Default is 'release' stage
+    Default: 'release'
+  RestApiCustomDomainName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Rest API Custom Domain Name. Default value is 'api.pod-np.its-plus.com' (NonProd) and 'api.pod.its-plus.com' (Prod)
+#  LambdaAuthorizerStackName:
+#    Type: String
+#    Description: Stack that exports Lambda Authorizer ARN.
+  MinimumCompressionSize:
+    Type: Number
+    Default: 0
+    Description: 'Compression or decompression is not applied on the payload if the payload size is smaller than this value. Setting it to zero allows compression for any payload size.'
+
+Resources:
+  HelloWorldFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${FunctionName}-${Env}"
+      CodeUri: ./
+      Handler: app.sayHelloHandler
+      Runtime: nodejs10.x
+      Environment:
+        Variables:
+          STAGE: !Ref Env
+          REGION:
+            Ref: AWS::Region
+          LOG_GROUP:
+            Fn::ImportValue: !Sub "${AppAccountLevelResourcesStackName}-LannisterLogGroup"
+      Timeout:
+        Ref: Timeout
+      MemorySize:
+        Ref: MemorySize
+      VpcConfig:
+        SubnetIds:
+          - Fn::ImportValue: !Sub "${VPCStackName}-PrivateSubnet1"
+          - Fn::ImportValue: !Sub "${VPCStackName}-PrivateSubnet2"
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub "${VPCStackName}-VcisRdsSecurityGroup"
+      Policies:
+        - VPCAccessPolicy: {}
+        #Inline Policy for Centralize Logging.
+        - Statement:
+            - Effect: Allow
+              Action:
+                - 'logs:DescribeLogStreams'
+              Resource:
+                Fn::Join:
+                  - ''
+                  - - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:'
+                    - Fn::ImportValue: !Sub "${AppAccountLevelResourcesStackName}-LannisterLogGroup"
+                    - ':log-stream:*'
+      PermissionsBoundary: !Sub 'arn:aws:iam::${AWS::AccountId}:policy/standard-permissions-boundary'
+
+
+  #Function Alias
+  LambdaAlias:
+    Type: "AWS::Lambda::Alias"
+    Properties:
+      FunctionName: !Ref HelloWorldFunction
+      FunctionVersion: "$LATEST"
+      Name: !Ref Env
+
+
+
+  #Lambda permission to be invoked by API Gateway.
+  Permission:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - LambdaAlias
+      - HelloWorldFunction
+      - SampleRestApi
+    Properties:
+      FunctionName: !Sub '${HelloWorldFunction}:${Env}'
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SampleRestApi}/*/*/*'
+
+  # Rest Api
+  SampleRestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${RestApiName}-${Env}'
+      Description: !Ref RestApiDescription
+      ApiKeySourceType: HEADER
+      MinimumCompressionSize: !Ref MinimumCompressionSize
+      EndpointConfiguration:
+        Types:
+          - EDGE
+
+
+  ## Lambda Authorizer
+#  ApiGatewayLambdaAuthorizer:
+#    Type: AWS::ApiGateway::Authorizer
+#    DependsOn: RestApi
+#    Properties:
+#      Name: !Sub 'vcis-pod-ping-authorizer-${Env}'
+#      Type: 'REQUEST'
+#      AuthorizerResultTtlInSeconds: 0
+#      AuthorizerUri: !Join
+#        - ''
+#        - - 'arn:aws:apigateway:'
+#          - !Ref 'AWS::Region'
+#          - ':lambda:path/2015-03-31/functions/'
+#          - Fn::ImportValue: !Sub "${LambdaAuthorizerStackName}-PodPingAuthorizer"
+#          - '/invocations'
+#      IdentitySource: 'method.request.header.Authorization'
+#      RestApiId: !Ref RestApi
+
+  #API Resources - Level 1
+  HelloRestApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt SampleRestApi.RootResourceId
+      PathPart: "hello"
+      RestApiId: !Ref SampleRestApi
+
+  #Methods
+  HelloRestApiGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: GET
+      Integration:
+        IntegrationHttpMethod: POST
+        PassthroughBehavior: WHEN_NO_MATCH
+        Type: AWS_PROXY
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${HelloWorldFunction.Arn}:${Env}/invocations'
+      OperationName: 'lambda'
+      ResourceId: !Ref HelloRestApiResource
+      RestApiId: !Ref SampleRestApi
+
+  HelloRestApiOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref SampleRestApi
+      ResourceId: !Ref HelloRestApiResource
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: 'Empty'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+
+
+  #Deployment of the API GW
+  ApiGatewayDeployment$timestamp:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: #All methods of API-GW created.
+      - HelloRestApiGetMethod
+      - HelloRestApiOptionsMethod
+    Properties:
+      Description: !Ref FunctionName
+      RestApiId: !Ref SampleRestApi
+
+  Stage:
+    Type: AWS::ApiGateway::Stage
+    DependsOn: ApiGatewayDeployment$timestamp
+    Properties:
+      RestApiId: !Ref SampleRestApi
+      DeploymentId: !Ref ApiGatewayDeployment$timestamp
+      StageName: !Ref StageName
+      Variables:
+        environment: !Ref Env
+
+  ApiGatewayUpdateStage:
+    Type: 'Custom::ApiGatewayUpdateStage'
+    Version: '1.0'
+    Properties:
+      ServiceToken:
+        Fn::ImportValue: !Sub "${ApiGateWayDeploymentUpdateStackName}-ApiGatewayUpdateStageFunctionArn"
+      DeploymentId: !Ref ApiGatewayDeployment$timestamp
+      RestApiId: !Ref SampleRestApi
+    DependsOn:
+      - ApiGatewayDeployment$timestamp
+
+  ApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    DependsOn: Stage
+    Properties:
+      DomainName: !Ref RestApiCustomDomainName
+      BasePath: !Sub '${RestApiName}-${Env}'
+      RestApiId: !Ref SampleRestApi
+      Stage: !Ref Stage
+
+Outputs:
+  SamSampleAppTwoRestApiEndpoint:
+    Description: Rest Api Endpoint URL
+    Value: !Sub 'https://${RestApiName}-${Env}.execute-api.${AWS::Region}.amazonaws.com'
+
+  RestApiGatewayId:
+    Description: ApiGatewayId
+    Value: !Ref SampleRestApi
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayId'
+
+  HelloWorldApiEndpoint:
+    Description: "API Gateway endpoint URL for release stage for Hello World function"
+    Value: !Sub "https://${RestApiName}-${Env}.execute-api.${AWS::Region}.amazonaws.com/release/hello/"
+
+  HelloWorldFunction:
+    Description: "Hello World Lambda Function ARN"
+    Value: !GetAtt HelloWorldFunction.Arn
+
+  HelloWorldFunctionIamRole:
+    Description: "Implicit IAM Role created for Hello World function"
+    Value: !GetAtt HelloWorldFunctionRole.Arn

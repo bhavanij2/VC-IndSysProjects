@@ -1,0 +1,11 @@
+{
+  "Parameters" : {
+    "Env": "prod",
+    "RestApiName" : "vcis-app-apigw-commercial-hierarchy",
+    "RestApiDescription" : "Commercial Hierarchy API",
+    "LambdaAuthorizerStackName": "vcis-app-pod-ping-authorizer-prod",
+    "RestApiCustomDomainName" : "/vcis/prod/infra/rest-api-domain/name",
+    "ProjectModuleTag": "/vcis/prod/infra/tags/project-module-value-capture-industry-system",
+    "CustomTags": "Key=mon:feature,Value=commercial-hierarchy,Key=mon:team,Value=lannister,Key=mon:application,Value=Industry System,Key=mon:module,Value=IS"
+  }
+}

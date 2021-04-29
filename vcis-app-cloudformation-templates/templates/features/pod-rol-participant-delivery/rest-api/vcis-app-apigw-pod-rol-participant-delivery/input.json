@@ -1,0 +1,29 @@
+{
+  "newRestApiName": "vcis-app-apigw-pod-rol-participant-delivery",
+  "feature": "pod-rol-participant-delivery",
+  "newRestApiDescription": "POD - Rol Participant Delivery",
+  "migrationBranchName": "VCT-10595",
+  "commitMessagePrefix": "VCT-10595 - Rol Participant Delivery Api Gw",
+  "githubTokenSSM": "/vcis/non-prod/app/github/token-enguan",
+  "pathsToInclude": [
+    "/pod/participant/delivery",
+    "/pod/participant/delivery/bulk",
+    "/pod/participant/delivery/bulk/csv/{bulkId}",
+    "/pod/participant/delivery/bulk/xlsx/{bulkId}",
+    "/pod/participant/delivery/csv/{filename}",
+    "/pod/participant/delivery/qbulk",
+    "/pod/participant/delivery/sum",
+    "/pod/participant/delivery/xlsx/{filename}",
+    "/pod/participant/delivery/{id}",
+    "/pod/participant/delivery/{id}/cancel"
+  ],
+  "originalRestApiId": "gkg1ib9end",
+  "originalRestApiStageName": "dev",
+  "baseBranch": "develop",
+  "tags": {
+    "teamName": "stark",
+    "featureName": "pod-rol-participant-delivery",
+    "applicationName": "Industry System",
+    "moduleName": "IS"
+  }
+}

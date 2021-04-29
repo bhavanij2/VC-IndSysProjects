@@ -1,0 +1,365 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  AWS CloudFormation Template Continuous Delivery: This template
+  builds an AWS CodePipeline pipeline that implements a continuous delivery release
+  process for AWS CloudFormation stacks. Submit a CloudFormation source artifact
+  to an Amazon S3 location before building the pipeline. The pipeline uses the
+  artifact to automatically create stacks and change sets.
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  WorkloadName:
+    Description: 'A name for the workload used in SSM Parameter Store.'
+    Type: String
+  Env:
+    Description: >-
+      A value used to describe the environment you will deploy to. This value will be used to get values
+      from SSM Parameter Store. Keys in Parameter store should begin with: /vcis/environment.
+    Type: String
+    AllowedValues:
+      - prod
+      - dev
+      - it
+      - poc
+    ConstraintDescription: Must be a prod, dev, it or poc.
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+  TemplateFileName:
+    Description: >-
+      The value is the name of the CloudFormation template to deploy.
+    Type: String
+  ConfigPath:
+    Description: >-
+      The value is the path to the CloudFormation parameter file to deploy.
+    Type: String
+
+
+  # Params with Default values
+  AppAccountLevelResourcesStackName:
+    Description: >-
+      The name of the stack name that is exporting the pipeline workload inputs
+    Type: String
+
+  S3SourceKey:
+    Description: >-
+      File name that is the repository artifact.
+    Type: String
+    Default: 'vcis-app-cloudformation-templates'
+
+  NotifyArn:
+    Description: >-
+      An SSM Parameter Store key. The value is an SNS ARN where CodePipeline sends notifications.
+      Default is: /vcis/prod/infra/cicd/infrastructure-deployment-approvals-sns-topic
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: '/vcis/prod/infra/cicd/infrastructure-deployment-approvals-sns-topic'
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "CodePipeline Settings"
+        Parameters:
+          - WorkloadName
+          - Env
+          - S3SourceKey
+          - TemplateFileName
+          - NotifyArn
+
+Conditions:
+  IsProd: !Equals [ !Ref Env, "prod" ]
+
+Resources:
+
+  vcisCloudFormationManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - 'ssm:getParameters'
+              - 'ssm:PutParameter'
+              - 'ssm:DeleteParameter'
+              - 'ssm:AddTagsToResource'
+
+              - 'lambda:InvokeFunction'
+
+              - 'cloudformation:DescribeStacks'
+              - 'cloudformation:CreateStack'
+              - 'cloudformation:DeleteStack'
+              - 'cloudformation:UpdateStack'
+              - 'cloudformation:DescribeChangeSet'
+              - 'cloudformation:CreateChangeSet'
+              - 'cloudformation:DeleteChangeSet'
+              - 'cloudformation:ExecuteChangeSet'
+              - 'cloudformation:SetStackPolicy'
+
+              - 'ec2:createTags'
+              - 'ec2:DescribeKeyPairs'
+
+              - 'ec2:DescribeVpcs'
+              - 'ec2:CreateVpc'
+              - 'ec2:DeleteVpc'
+              - 'ec2:ModifyVpcAttribute'
+
+              - 'ec2:DescribeInternetGateways'
+              - 'ec2:CreateInternetGateway'
+              - 'ec2:DeleteInternetGateway'
+              - 'ec2:AttachInternetGateway'
+              - 'ec2:DetachInternetGateway'
+
+              - 'ec2:DescribeRouteTables'
+              - 'ec2:CreateRouteTable'
+              - 'ec2:DeleteRouteTable'
+              - 'ec2:AssociateRouteTable'
+              - 'ec2:DisassociateRouteTable'
+
+              - 'ec2:CreateRoute'
+              - 'ec2:DeleteRoute'
+
+              - 'ec2:DescribeAvailabilityZones'
+              - 'ec2:DescribeAccountAttributes'
+
+              - 'ec2:DescribeSubnets'
+              - 'ec2:CreateSubnet'
+              - 'ec2:DeleteSubnet'
+              - 'ec2:ModifySubnetAttribute'
+
+              - 'ec2:DescribeSecurityGroups'
+              - 'ec2:CreateSecurityGroup'
+              - 'ec2:DeleteSecurityGroup'
+
+              - 'ec2:AuthorizeSecurityGroupIngress'
+              - 'ec2:AuthorizeSecurityGroupEgress'
+              - 'ec2:RevokeSecurityGroupEgress'
+
+              - 'ec2:describeAddresses'
+              - 'ec2:allocateAddress'
+              - 'ec2:releaseAddress'
+              - 'ec2:associateAddress'
+              - 'ec2:disassociateAddress'
+
+              - 'ec2:DescribeInstances'
+              - 'ec2:RunInstances'
+              - 'ec2:TerminateInstances'
+
+              - 'ec2:DescribeNatGateways'
+              - 'ec2:CreateNatGateway'
+              - 'ec2:DeleteNatGateway'
+
+              - 'ecr:DescribeRepositories'
+              - 'ecr:CreateRepository'
+              - 'ecr:DeleteRepository'
+
+              - 'codebuild:CreateProject'
+
+              - 'iam:*'
+              - 'kms:*'
+              - 'sqs:*'
+              - 'sns:*'
+            Effect: Allow
+            Resource: '*'
+        Version: "2012-10-17"
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Location:
+          Fn::ImportValue: !Sub "${AppAccountLevelResourcesStackName}-ArtifactBucket"
+        Type: S3
+      DisableInboundStageTransitions: []
+      RoleArn: !GetAtt [PipelineRole, Arn]
+      Stages:
+        - Name: S3Source
+          Actions:
+            - Name: TemplateSource
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: S3
+                Version: '1'
+              Configuration:
+                S3Bucket:
+                  Fn::ImportValue: !Sub "${AppAccountLevelResourcesStackName}-SourceBucket"
+                S3ObjectKey: !Sub '${S3SourceKey}-${Env}'
+              OutputArtifacts:
+                - Name: TemplateSource
+              RunOrder: 1
+        - Name: UpdateStage
+          Actions:
+            - Name: CreateStack
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              InputArtifacts:
+                - Name: TemplateSource
+              Configuration:
+                ActionMode: REPLACE_ON_FAILURE
+                RoleArn: !GetAtt [CFNRole, Arn]
+                StackName: !Sub "${WorkloadName}-${Env}-temp"
+                Capabilities: CAPABILITY_IAM,CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
+                TemplateConfiguration: !Sub "TemplateSource::${ConfigPath}/${WorkloadName}-${Env}-update-config.json"
+                TemplatePath: !Sub "TemplateSource::${TemplateFileName}"
+              RunOrder: 1
+            - Name: DeleteUpdatedStack
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              Configuration:
+                ActionMode: DELETE_ONLY
+                RoleArn: !GetAtt [CFNRole, Arn]
+                StackName: !Sub "${WorkloadName}-${Env}-temp"
+              RunOrder: 3
+
+        - Name: DeployStage
+          Actions:
+            - Name: CreateChangeSet
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              InputArtifacts:
+                - Name: TemplateSource
+              Configuration:
+                ActionMode: CHANGE_SET_REPLACE
+                RoleArn: !GetAtt [CFNRole, Arn]
+                StackName: !Sub "${WorkloadName}-${Env}"
+                Capabilities: CAPABILITY_IAM,CAPABILITY_NAMED_IAM
+                ChangeSetName: !Sub '${WorkloadName}-${Env}-change-set'
+                TemplateConfiguration: !Sub "TemplateSource::${ConfigPath}/${WorkloadName}-${Env}-config.json"
+                TemplatePath: !Sub "TemplateSource::${TemplateFileName}"
+              RunOrder: 1
+            - !If
+              - IsProd
+              - Name: ApproveChangeSet
+                ActionTypeId:
+                  Category: Approval
+                  Owner: AWS
+                  Provider: Manual
+                  Version: '1'
+                Configuration:
+                  NotificationArn: !Ref NotifyArn
+                  CustomData: !Sub 'A new change set was created for the ${WorkloadName}-${Env} stack. Do you want to implement the changes?'
+                RunOrder: 2
+              - !Ref AWS::NoValue
+            - Name: ExecuteChangeSet
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              Configuration:
+                ActionMode: CHANGE_SET_EXECUTE
+                ChangeSetName: !Sub '${WorkloadName}-${Env}-change-set'
+                RoleArn: !GetAtt [CFNRole, Arn]
+                StackName: !Sub "${WorkloadName}-${Env}"
+              RunOrder: 3
+
+  CFNRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary: !Sub 'arn:aws:iam::${AWS::AccountId}:policy/standard-permissions-boundary'
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: ['sts:AssumeRole']
+            Effect: Allow
+            Principal:
+              Service: [cloudformation.amazonaws.com]
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: CodePipelineAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - 'codebuild:CreateProject'
+                Effect: Allow
+                Resource: '*'
+      ManagedPolicyArns:
+        - !Ref vcisCloudFormationManagedPolicy
+        - arn:aws:iam::aws:policy/AWSLambdaFullAccess
+        - arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary: !Sub 'arn:aws:iam::${AWS::AccountId}:policy/standard-permissions-boundary'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonSNSFullAccess'
+        - 'arn:aws:iam::aws:policy/IAMFullAccess'
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: ['sts:AssumeRole']
+            Effect: Allow
+            Principal:
+              Service: [codepipeline.amazonaws.com]
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: CodePipelineAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - 'ssm:getParameters'
+                  - 'cloudformation:CreateStack'
+                  - 'cloudformation:DescribeStacks'
+                  - 'cloudformation:DeleteStack'
+                  - 'cloudformation:UpdateStack'
+                  - 'cloudformation:CreateChangeSet'
+                  - 'cloudformation:ExecuteChangeSet'
+                  - 'cloudformation:DeleteChangeSet'
+                  - 'cloudformation:DescribeChangeSet'
+                  - 'cloudformation:SetStackPolicy'
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                  - s3:Get*
+                  - s3:List*
+                  - s3:Put*
+                Effect: Allow
+                Resource:
+                  - !Join
+                    - ""
+                    - - 'arn:aws:s3:::'
+                      - Fn::ImportValue: !Sub "${AppAccountLevelResourcesStackName}-ArtifactBucket"
+                  - !Join
+                    - ""
+                    - - 'arn:aws:s3:::'
+                      - Fn::ImportValue: !Sub "${AppAccountLevelResourcesStackName}-ArtifactBucket"
+                      - '/*'
+              - Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                  - s3:Get*
+                  - s3:List*
+                Effect: Allow
+                Resource:
+                  - !Join
+                    - ""
+                    - - 'arn:aws:s3:::'
+                      - Fn::ImportValue: !Sub "${AppAccountLevelResourcesStackName}-SourceBucket"
+                  - !Join
+                    - ""
+                    - - 'arn:aws:s3:::'
+                      - Fn::ImportValue: !Sub "${AppAccountLevelResourcesStackName}-SourceBucket"
+                      - '/*'
+              - Action: "codebuild:*"
+                Effect: Allow
+                Resource: "*"
+
+Outputs:
+  PipelineUrl:
+    Description: 'Infra CI/CD CodePipeline'
+    Value:  !Join ["", [!Sub 'https://console.aws.amazon.com/codepipeline/home?region=${AWS::Region}#/view/', !Ref Pipeline] ]

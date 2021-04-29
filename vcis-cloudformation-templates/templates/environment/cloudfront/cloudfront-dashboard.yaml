@@ -1,0 +1,633 @@
+#Transform: ["AWS::Serverless-2016-10-31", VcisCommonTagsMacro]
+Transform: ["AWS::Serverless-2016-10-31"]
+Description: 'VCIS Industry System Cloudfront Alarms & Dashboard'
+
+Parameters:
+
+    CloudFrontDashboardName:
+        Type: 'String'
+        Description: Cloudfront dashboard's name
+
+    CloudfrontId:
+        Type: 'String'
+        Description: 'Cloudfront id'
+    
+    CheckAuthLambdaName:
+        Type: 'String'
+        Description: The check auth lambda name.
+
+    CheckAuthLambdaVersion:
+        Type: 'String'
+        Description: The check auth lambda version
+
+    ParseAuthLambdaName:
+        Type: 'String'
+        Description: The parse auth lambda name.
+
+    ParseAuthLambdaVersion:
+        Type: 'String'
+        Description: The refresh auth lambda version.
+    
+    RefreshAuthLambdaName:
+        Type: 'String'
+        Description: The refresh auth lambda name.
+
+    RefreshAuthLambdaVersion:
+        Type: 'String'
+        Description: The refresh auth lambda version.
+
+    S3WebPagesBucket:
+        Type: 'String'
+        Description: 'The S3 web bucket'
+    
+    CloudFrontRegion:
+        Type: String
+        Description: Cloudfront region
+        Default: 'us-east-1'
+  
+    InfraOpsSlackNotifierStackName:
+        Description: >-
+            The name of the stack that is exporting the Infra Operational Slack Notifier SNS Topic
+        Type: 'String'
+
+    4xxErrorRateThreshold:
+        Type: Number
+        Description: The value to compare with the specified statistic
+
+    5xxErrorRateThreshold:
+        Type: Number
+        Description: The value to compare with the specified statistic
+
+    RequestThreshold:
+        Type: Number
+        Description: The value to compare with the specified statistic
+
+    S3BucketSizeThreshold:
+        Type: Number
+        Description: The value to compare with the specified statistic
+
+    4xxErrorRatePeriod:
+        Type: Number
+        Description: The period, in seconds, over which the statistic is applied. This is required for an alarm based on a metric. Valid values are 10, 30, 60, and any multiple of 60.
+
+    5xxErrorRatePeriod:
+        Type: Number
+        Description: The period, in seconds, over which the statistic is applied. This is required for an alarm based on a metric. Valid values are 10, 30, 60, and any multiple of 60.
+
+    RequestPeriod:
+        Type: Number
+        Description: The period, in seconds, over which the statistic is applied. This is required for an alarm based on a metric. Valid values are 10, 30, 60, and any multiple of 60.
+
+    S3BucketSizePeriod:
+        Type: Number
+        Description: The period, in seconds, over which the statistic is applied. This is required for an alarm based on a metric. Valid values are 10, 30, 60, and any multiple of 60.
+
+Resources:
+
+    4xxErrorRateAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmDescription: 'The percentage of all viewer requests for which the response’s HTTP status code is 4xx.'
+            AlarmName: !Sub '${CloudfrontId}-4xxErrorRateAlarm'
+            AlarmActions:
+                - Fn::ImportValue: !Sub "${InfraOpsSlackNotifierStackName}-SNSTopicArn"
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            EvaluationPeriods: 1
+            Metrics:
+            - Id: m1
+              MetricStat:
+                Metric:
+                    MetricName: 4xxErrorRate
+                    Namespace: AWS/CloudFront
+                Period: !Ref 4xxErrorRatePeriod
+                Stat: Average
+            Threshold: !Ref 4xxErrorRateThreshold
+
+    5xxErrorRateAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmDescription: 'The percentage of all viewer requests for which the response’s HTTP status code is 5xx.'
+            AlarmName: !Sub '${CloudfrontId}-5xxErrorRateAlarm'
+            AlarmActions:
+                - Fn::ImportValue: !Sub "${InfraOpsSlackNotifierStackName}-SNSTopicArn"
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            EvaluationPeriods: 1
+            Metrics:
+            - Id: m1
+              MetricStat:
+                Metric:
+                    MetricName: 5xxErrorRate
+                    Namespace: AWS/CloudFront
+                Period: !Ref 5xxErrorRatePeriod
+                Stat: Average
+            Threshold: !Ref 5xxErrorRateThreshold
+
+    CloudFrontRequestAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmDescription: 'The total number of viewer requests received by CloudFront, for all HTTP methods and for both HTTP and HTTPS requests.'
+            AlarmName: !Sub '${CloudfrontId}-Requests'
+            AlarmActions:
+                - Fn::ImportValue: !Sub "${InfraOpsSlackNotifierStackName}-SNSTopicArn"
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            EvaluationPeriods: 1
+            Metrics:
+            - Id: m1
+              MetricStat:
+                Metric:
+                    MetricName: Requests
+                    Namespace: AWS/CloudFront
+                Period: !Ref RequestPeriod
+                Stat: Sum
+            Threshold: !Ref RequestThreshold
+
+    S3BucketSizeAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmDescription: 'Bucket Size Alarm'
+            AlarmName: !Sub '${CloudfrontId}-S3BucketSize'
+            AlarmActions:
+                - Fn::ImportValue: !Sub "${InfraOpsSlackNotifierStackName}-SNSTopicArn"
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            EvaluationPeriods: 1
+            Metrics:
+            - Id: m1
+              MetricStat:
+                Metric:
+                    MetricName: BucketSizeBytes
+                    Namespace: AWS/S3
+                Period: !Ref S3BucketSizePeriod
+                Stat: Sum
+            Threshold: !Ref S3BucketSizeThreshold
+
+    CloudWatchDashboard:
+        Type: AWS::CloudWatch::Dashboard
+        Properties: 
+            DashboardName: !Ref CloudFrontDashboardName
+            DashboardBody:
+                            Fn::Sub:
+                                - '{
+                                    "start": "-PT24H",
+                                    "periodOverride": "inherit",
+                                    "widgets": [
+                                            {
+                                                "type": "metric",
+                                                "x": 0,
+                                                "y": 0,
+                                                "width": 12,
+                                                "height": 12,
+                                                "properties": {
+                                                    "view": "timeSeries",
+                                                    "stacked": false,
+                                                    "metrics": [
+                                                        [ "AWS/CloudFront", "Requests", "Region", "Global", "DistributionId", "${CloudfrontId}" ]
+                                                    ],
+                                                    "region": "${CloudFrontRegion}",
+                                                    "title": "Requests (sum)",
+                                                    "stat": "Sum"
+                                                }
+                                            },
+                                            {
+                                                "type": "metric",
+                                                "x": 12,
+                                                "y": 0,
+                                                "width": 12,
+                                                "height": 12,
+                                                "properties": {
+                                                    "view": "timeSeries",
+                                                    "stacked": false,
+                                                    "metrics": [
+                                                        [ "AWS/CloudFront", "BytesUploaded", "Region", "Global", "DistributionId", "${CloudfrontId}" ],
+                                                        [ ".", "BytesDownloaded", ".", ".", ".", "." ]
+                                                    ],
+                                                    "region": "${CloudFrontRegion}",
+                                                    "title": "Data transfer"
+                                                }
+                                            },
+                                            {
+                                                "type": "metric",
+                                                "x": 0,
+                                                "y": 12,
+                                                "width": 12,
+                                                "height": 12,
+                                                "properties": {
+                                                    "view": "timeSeries",
+                                                    "stacked": false,
+                                                    "metrics": [
+                                                        [ "AWS/CloudFront", "TotalErrorRate", "Region", "Global", "DistributionId", "${CloudfrontId}" ],
+                                                        [ ".", "4xxErrorRate", ".", ".", ".", ".", { "label": "Total4xxErrors" } ],
+                                                        [ ".", "5xxErrorRate", ".", ".", ".", ".", { "label": "Total5xxErrors" } ],
+                                                        [ { "expression": "(m4+m5+m6)/m7*100", "label": "5xxErrorByLambdaEdge", "id": "e1" } ],
+                                                        [ "AWS/CloudFront", "LambdaExecutionError", "Region", "Global", "DistributionId", "${CloudfrontId}", { "id": "m4", "stat": "Sum", "visible": false } ],
+                                                        [ ".", "LambdaValidationError", ".", ".", ".", ".", { "id": "m5", "stat": "Sum", "visible": false } ],
+                                                        [ ".", "LambdaLimitExceededErrors", ".", ".", ".", ".", { "id": "m6", "stat": "Sum", "visible": false } ],
+                                                        [ ".", "Requests", ".", ".", ".", ".", { "id": "m7", "stat": "Sum", "visible": false } ]
+                                                    ],
+                                                    "region": "${CloudFrontRegion}",
+                                                    "title": "Error rate (as a percentage of total requests)"
+                                                }
+                                            },
+                                            {
+                                                "type": "metric",
+                                                "x": 12,
+                                                "y": 12,
+                                                "width": 12,
+                                                "height": 12,
+                                                "properties": {
+                                                    "view": "timeSeries",
+                                                    "stacked": false,
+                                                    "metrics": [
+                                                        [ "AWS/CloudFront", "4xxErrorRate", "Region", "Global", "DistributionId", "${CloudfrontId}", { "label": "Total4xxErrors" } ],
+                                                        [ ".", "401ErrorRate", ".", ".", ".", "." ],
+                                                        [ ".", "403ErrorRate", ".", ".", ".", "." ],
+                                                        [ ".", "404ErrorRate", ".", ".", ".", "." ]
+                                                    ],
+                                                    "region": "${CloudFrontRegion}",
+                                                    "title": "4xx Error rate breakdown (as a percentage of total requests)"
+                                                }
+                                            },
+                                            {
+                                                "type": "metric",
+                                                "x": 0,
+                                                "y": 24,
+                                                "width": 12,
+                                                "height": 12,
+                                                "properties": {
+                                                    "view": "timeSeries",
+                                                    "stacked": false,
+                                                    "metrics": [
+                                                        [ "AWS/CloudFront", "5xxErrorRate", "Region", "Global", "DistributionId", "${CloudfrontId}", { "label": "Total5xxErrors" } ],
+                                                        [ ".", "502ErrorRate", ".", ".", ".", "." ],
+                                                        [ ".", "503ErrorRate", ".", ".", ".", "." ],
+                                                        [ ".", "504ErrorRate", ".", ".", ".", "." ]
+                                                    ],
+                                                    "region": "${CloudFrontRegion}",
+                                                    "title": "5xx Error rate breakdown (as a percentage of total requests)"
+                                                }
+                                            },
+                                            {
+                                                "type": "metric",
+                                                "x": 12,
+                                                "y": 24,
+                                                "width": 12,
+                                                "height": 12,
+                                                "properties": {
+                                                    "view": "timeSeries",
+                                                    "stacked": false,
+                                                    "metrics": [
+                                                        [ "AWS/CloudFront", "OriginLatency", "Region", "Global", "DistributionId", "${CloudfrontId}" ]
+                                                    ],
+                                                    "region": "${CloudFrontRegion}",
+                                                    "title": "Origin latency"
+                                                }
+                                            },
+                                            {
+                                                "type": "metric",
+                                                "x": 0,
+                                                "y": 36,
+                                                "width": 12,
+                                                "height": 12,
+                                                "properties": {
+                                                    "view": "timeSeries",
+                                                    "stacked": false,
+                                                    "metrics": [
+                                                        [ "AWS/CloudFront", "CacheHitRate", "Region", "Global", "DistributionId", "${CloudfrontId}" ]
+                                                    ],
+                                                    "region": "${CloudFrontRegion}",
+                                                    "title": "Cache hit rate"
+                                                }
+                                            },
+                                            {
+                                            "type": "metric",
+                                            "x": 0,
+                                            "y": 48,
+                                            "width": 24,
+                                            "height": 12,
+                                            "properties": {
+                                                    "view": "timeSeries",
+                                                    "stacked": false,
+                                                    "metrics": [
+                                                        [ "AWS/Lambda", "Invocations", "FunctionName", "${CloudFrontRegion}.${CheckAuthLambdaName}", "Resource", "${CloudFrontRegion}.${CheckAuthLambdaName}:${CheckAuthLambdaVersion}", { "id": "check1", "visible": true, "label": "US-East (N. Virginia)" } ],
+                                                        [ "...", { "region": "us-east-2", "id": "check2", "visible": true, "label": "US-East (Ohio)" } ],
+                                                        [ "...", { "region": "us-west-2", "id": "check3", "visible": true, "label": "US-West (Oregon)" } ],
+                                                        [ "...", { "region": "ap-south-1", "id": "check4", "visible": true, "label": "Asia Pacific (Mumbai)" } ],
+                                                        [ "...", { "region": "ap-northeast-1", "id": "check5", "visible": true, "label": "Asia Pacific (Tokyo)" } ],
+                                                        [ "...", { "region": "ap-northeast-2", "id": "check6", "visible": true, "label": "Asia Pacific (Seoul)" } ],
+                                                        [ "...", { "region": "ap-southeast-1", "id": "check7", "visible": true, "label": "Asia Pacific (Singapore)" } ],
+                                                        [ "...", { "region": "ap-southeast-2", "id": "check8", "visible": true, "label": "Asia Pacific (Sydney)" } ],
+                                                        [ "...", { "region": "eu-west-2", "id": "check9", "visible": true, "label": "EU (London)" } ],
+                                                        [ "...", { "region": "eu-central-1", "id": "check10", "visible": true, "label": "EU (Frankfurt)" } ],
+                                                        [ "...", { "region": "sa-east-1", "id": "check11", "visible": true, "label": "South America (Sao Paulo)" } ],
+                                                        [ { "expression": "(check1+check2+check3+check4+check5+check6+check7+check8+check9+check10+check11)", "label": "Global (sum)" } ]
+                                                    ],
+                                                    "region": "${CloudFrontRegion}",
+                                                    "title": "Check Auth - Invocations (sum)",
+                                                    "period": 300,
+                                                    "stat": "Sum"
+                                                }
+                                            },
+                                            {
+                                            "type": "metric",
+                                            "x": 0,
+                                            "y": 48,
+                                            "width": 24,
+                                            "height": 12,
+                                            "properties": {
+                                                    "view": "timeSeries",
+                                                    "stacked": false,
+                                                    "metrics": [
+                                                        [ "AWS/Lambda", "Invocations", "FunctionName", "${CloudFrontRegion}.${ParseAuthLambdaName}", "Resource", "${CloudFrontRegion}.${ParseAuthLambdaName}:${ParseAuthLambdaVersion}", { "id": "parse1", "visible": true, "label": "US-East (N. Virginia)" } ],
+                                                        [ "...", { "region": "us-east-2", "id": "parse2", "visible": true, "label": "US-East (Ohio)" } ],
+                                                        [ "...", { "region": "us-west-2", "id": "parse3", "visible": true, "label": "US-West (Oregon)" } ],
+                                                        [ "...", { "region": "ap-south-1", "id": "parse4", "visible": true, "label": "Asia Pacific (Mumbai)" } ],
+                                                        [ "...", { "region": "ap-northeast-1", "id": "parse5", "visible": true, "label": "Asia Pacific (Tokyo)" } ],
+                                                        [ "...", { "region": "ap-northeast-2", "id": "parse6", "visible": true, "label": "Asia Pacific (Seoul)" } ],
+                                                        [ "...", { "region": "ap-southeast-1", "id": "parse7", "visible": true, "label": "Asia Pacific (Singapore)" } ],
+                                                        [ "...", { "region": "ap-southeast-2", "id": "parse8", "visible": true, "label": "Asia Pacific (Sydney)" } ],
+                                                        [ "...", { "region": "eu-west-2", "id": "parse9", "visible": true, "label": "EU (London)" } ],
+                                                        [ "...", { "region": "eu-central-1", "id": "parse10", "visible": true, "label": "EU (Frankfurt)" } ],
+                                                        [ "...", { "region": "sa-east-1", "id": "parse11", "visible": true, "label": "South America (Sao Paulo)" } ],
+                                                        [ { "expression": "(parse1+parse2+parse3+parse4+parse5+parse6+parse7+parse8+parse9+parse10+parse11)", "label": "Global (sum)" } ]
+                                                    ],
+                                                    "region": "${CloudFrontRegion}",
+                                                    "title": "Parse Auth - Invocations (sum)",
+                                                    "period": 300,
+                                                    "stat": "Sum"
+                                                }
+                                            },
+                                            {
+                                            "type": "metric",
+                                            "x": 0,
+                                            "y": 48,
+                                            "width": 24,
+                                            "height": 12,
+                                            "properties": {
+                                                    "view": "timeSeries",
+                                                    "stacked": false,
+                                                    "metrics": [
+                                                        [ "AWS/Lambda", "Invocations", "FunctionName", "${CloudFrontRegion}.${RefreshAuthLambdaName}", "Resource", "${CloudFrontRegion}.${RefreshAuthLambdaName}:${RefreshAuthLambdaVersion}", { "id": "refresh1", "visible": true, "label": "US-East (N. Virginia)" } ],
+                                                        [ "...", { "region": "us-east-2", "id": "refresh2", "visible": true, "label": "US-East (Ohio)" } ],
+                                                        [ "...", { "region": "us-west-2", "id": "refresh3", "visible": true, "label": "US-West (Oregon)" } ],
+                                                        [ "...", { "region": "ap-south-1", "id": "refresh4", "visible": true, "label": "Asia Pacific (Mumbai)" } ],
+                                                        [ "...", { "region": "ap-northeast-1", "id": "refresh5", "visible": true, "label": "Asia Pacific (Tokyo)" } ],
+                                                        [ "...", { "region": "ap-northeast-2", "id": "refresh6", "visible": true, "label": "Asia Pacific (Seoul)" } ],
+                                                        [ "...", { "region": "ap-southeast-1", "id": "refresh7", "visible": true, "label": "Asia Pacific (Singapore)" } ],
+                                                        [ "...", { "region": "ap-southeast-2", "id": "refresh8", "visible": true, "label": "Asia Pacific (Sydney)" } ],
+                                                        [ "...", { "region": "eu-west-2", "id": "refresh9", "visible": true, "label": "EU (London)" } ],
+                                                        [ "...", { "region": "eu-central-1", "id": "refresh10", "visible": true, "label": "EU (Frankfurt)" } ],
+                                                        [ "...", { "region": "sa-east-1", "id": "refresh11", "visible": true, "label": "South America (Sao Paulo)" } ],
+                                                        [ { "expression": "(refresh1+refresh2+refresh3+refresh4+refresh5+refresh6+refresh7+refresh8+refresh9+refresh10+refresh11)", "label": "Global (sum)" } ]
+                                                    ],
+                                                    "region": "${CloudFrontRegion}",
+                                                    "title": "Refresh Auth - Invocations (sum)",
+                                                    "period": 300,
+                                                    "stat": "Sum"
+                                                }
+                                            },
+                                            {
+                                            "type": "metric",
+                                            "x": 0,
+                                            "y": 48,
+                                            "width": 24,
+                                            "height": 12,
+                                            "properties": {
+                                                    "view": "timeSeries",
+                                                    "stacked": false,
+                                                    "metrics": [
+                                                        [ "AWS/Lambda", "Errors", "FunctionName", "${CloudFrontRegion}.${CheckAuthLambdaName}", "Resource", "${CloudFrontRegion}.${CheckAuthLambdaName}:${CheckAuthLambdaVersion}", { "id": "check1", "visible": true, "label": "US-East (N. Virginia)" } ],
+                                                        [ "...", { "region": "us-east-2", "id": "check2", "visible": true, "label": "US-East (Ohio)" } ],
+                                                        [ "...", { "region": "us-west-2", "id": "check3", "visible": true, "label": "US-West (Oregon)" } ],
+                                                        [ "...", { "region": "ap-south-1", "id": "check4", "visible": true, "label": "Asia Pacific (Mumbai)" } ],
+                                                        [ "...", { "region": "ap-northeast-1", "id": "check5", "visible": true, "label": "Asia Pacific (Tokyo)" } ],
+                                                        [ "...", { "region": "ap-northeast-2", "id": "check6", "visible": true, "label": "Asia Pacific (Seoul)" } ],
+                                                        [ "...", { "region": "ap-southeast-1", "id": "check7", "visible": true, "label": "Asia Pacific (Singapore)" } ],
+                                                        [ "...", { "region": "ap-southeast-2", "id": "check8", "visible": true, "label": "Asia Pacific (Sydney)" } ],
+                                                        [ "...", { "region": "eu-west-2", "id": "check9", "visible": true, "label": "EU (London)" } ],
+                                                        [ "...", { "region": "eu-central-1", "id": "check10", "visible": true, "label": "EU (Frankfurt)" } ],
+                                                        [ "...", { "region": "sa-east-1", "id": "check11", "visible": true, "label": "South America (Sao Paulo)" } ],
+                                                        [ "...", "${CloudFrontRegion}.${ParseAuthLambdaName}", ".", "${CloudFrontRegion}.${ParseAuthLambdaName}:${ParseAuthLambdaVersion}", { "id": "parse1", "visible": true, "label": "ParseAuth US-East (N. Virginia)" } ],
+                                                        [ "...", { "region": "us-east-2", "id": "parse2", "visible": true, "label": "ParseAuth US-East (Ohio)" } ],
+                                                        [ "...", { "region": "us-west-2", "id": "parse3", "visible": true, "label": "ParseAuth US-West (Oregon)" } ],
+                                                        [ "...", { "region": "ap-south-1", "id": "parse4", "visible": true, "label": "ParseAuth Asia Pacific (Mumbai)" } ],
+                                                        [ "...", { "region": "ap-northeast-1", "id": "parse5", "visible": true, "label": "ParseAuth Asia Pacific (Tokyo)" } ],
+                                                        [ "...", { "region": "ap-northeast-2", "id": "parse6", "visible": true, "label": "ParseAuth Asia Pacific (Seoul)" } ],
+                                                        [ "...", { "region": "ap-southeast-1", "id": "parse7", "visible": true, "label": "ParseAuth Asia Pacific (Singapore)" } ],
+                                                        [ "...", { "region": "ap-southeast-2", "id": "parse8", "visible": true, "label": "ParseAuth Asia Pacific (Sydney)" } ],
+                                                        [ "...", { "region": "eu-west-2", "id": "parse9", "visible": true, "label": "ParseAuth EU (London)" } ],
+                                                        [ "...", { "region": "eu-central-1", "id": "parse10", "visible": true, "label": "ParseAuth EU (Frankfurt)" } ],
+                                                        [ "...", { "region": "sa-east-1", "id": "parse11", "visible": true, "label": "ParseAuth South America (Sao Paulo)" } ],
+                                                        [ "...", "${CloudFrontRegion}.${RefreshAuthLambdaName}", ".", "${CloudFrontRegion}.${RefreshAuthLambdaName}:${RefreshAuthLambdaVersion}", { "id": "refresh1", "visible": true, "label": "RefreshAuth US-East (N. Virginia)" } ],
+                                                        [ "...", { "region": "us-east-2", "id": "refresh2", "visible": true, "label": "RefreshAuth US-East (Ohio)" } ],
+                                                        [ "...", { "region": "us-west-2", "id": "refresh3", "visible": true, "label": "RefreshAuth US-West (Oregon)" } ],
+                                                        [ "...", { "region": "ap-south-1", "id": "refresh4", "visible": true, "label": "RefreshAuth Asia Pacific (Mumbai)" } ],
+                                                        [ "...", { "region": "ap-northeast-1", "id": "refresh5", "visible": true, "label": "RefreshAuth Asia Pacific (Tokyo)" } ],
+                                                        [ "...", { "region": "ap-northeast-2", "id": "refresh6", "visible": true, "label": "RefreshAuth Asia Pacific (Seoul)" } ],
+                                                        [ "...", { "region": "ap-southeast-1", "id": "refresh7", "visible": true, "label": "RefreshAuth Asia Pacific (Singapore)" } ],
+                                                        [ "...", { "region": "ap-southeast-2", "id": "refresh8", "visible": true, "label": "RefreshAuth Asia Pacific (Sydney)" } ],
+                                                        [ "...", { "region": "eu-west-2", "id": "refresh9", "visible": true, "label": "RefreshAuth EU (London)" } ],
+                                                        [ "...", { "region": "eu-central-1", "id": "refresh10", "visible": true, "label": "RefreshAuth EU (Frankfurt)" } ],
+                                                        [ "...", { "region": "sa-east-1", "id": "refresh11", "visible": true, "label": "RefreshAuth South America (Sao Paulo)" } ],
+                                                        [ { "expression": "(check1+check2+check3+check4+check5+check6+check7+check8+check9+check10+check11)", "label": "CheckAuth Global (sum)" } ],
+                                                        [ { "expression": "(parse1+parse2+parse3+parse4+parse5+parse6+parse7+parse8+parse9+parse10+parse11)", "label": "ParseAuth Global (sum)" } ],
+                                                        [ { "expression": "(refresh1+refresh2+refresh3+refresh4+refresh5+refresh6+refresh7+refresh8+refresh9+refresh10+refresh11)", "label": "RefreshAuth Global (sum)" } ]
+                                                    ],
+                                                    "region": "${CloudFrontRegion}",
+                                                    "title": "Errors (sum)",
+                                                    "period": 300,
+                                                    "stat": "Sum"
+                                                }
+                                            },
+                                            {
+                                            "type": "metric",
+                                            "x": 0,
+                                            "y": 48,
+                                            "width": 24,
+                                            "height": 12,
+                                            "properties": {
+                                                    "view": "timeSeries",
+                                                    "stacked": false,
+                                                    "metrics": [
+                                                        [ "AWS/Lambda", "Throttles", "FunctionName", "${CloudFrontRegion}.${CheckAuthLambdaName}", "Resource", "${CloudFrontRegion}.${CheckAuthLambdaName}:${CheckAuthLambdaVersion}", { "id": "check1", "visible": true, "label": "CheckAuth US-East (N. Virginia)" } ],
+                                                        [ "...", { "region": "us-east-2", "id": "check2", "visible": true, "label": "CheckAuth US-East (Ohio)" } ],
+                                                        [ "...", { "region": "us-west-2", "id": "check3", "visible": true, "label": "CheckAuth US-West (Oregon)" } ],
+                                                        [ "...", { "region": "ap-south-1", "id": "check4", "visible": true, "label": "CheckAuth Asia Pacific (Mumbai)" } ],
+                                                        [ "...", { "region": "ap-northeast-1", "id": "check5", "visible": true, "label": "CheckAuth Asia Pacific (Tokyo)" } ],
+                                                        [ "...", { "region": "ap-northeast-2", "id": "check6", "visible": true, "label": "CheckAuth Asia Pacific (Seoul)" } ],
+                                                        [ "...", { "region": "ap-southeast-1", "id": "check7", "visible": true, "label": "CheckAuth Asia Pacific (Singapore)" } ],
+                                                        [ "...", { "region": "ap-southeast-2", "id": "check8", "visible": true, "label": "CheckAuth Asia Pacific (Sydney)" } ],
+                                                        [ "...", { "region": "eu-west-2", "id": "check9", "visible": true, "label": "CheckAuth EU (London)" } ],
+                                                        [ "...", { "region": "eu-central-1", "id": "check10", "visible": true, "label": "CheckAuth EU (Frankfurt)" } ],
+                                                        [ "...", { "region": "sa-east-1", "id": "check11", "visible": true, "label": "CheckAuth South America (Sao Paulo)" } ],
+                                                        [ "...", "${CloudFrontRegion}.${ParseAuthLambdaName}", ".", "${CloudFrontRegion}.${ParseAuthLambdaName}:${ParseAuthLambdaVersion}", { "id": "parse1", "visible": true, "label": "ParseAuth US-East (N. Virginia)" } ],
+                                                        [ "...", { "region": "us-east-2", "id": "parse2", "visible": true, "label": "ParseAuth US-East (Ohio)" } ],
+                                                        [ "...", { "region": "us-west-2", "id": "parse3", "visible": true, "label": "ParseAuth US-West (Oregon)" } ],
+                                                        [ "...", { "region": "ap-south-1", "id": "parse4", "visible": true, "label": "ParseAuth Asia Pacific (Mumbai)" } ],
+                                                        [ "...", { "region": "ap-northeast-1", "id": "parse5", "visible": true, "label": "ParseAuth Asia Pacific (Tokyo)" } ],
+                                                        [ "...", { "region": "ap-northeast-2", "id": "parse6", "visible": true, "label": "ParseAuth Asia Pacific (Seoul)" } ],
+                                                        [ "...", { "region": "ap-southeast-1", "id": "parse7", "visible": true, "label": "ParseAuth Asia Pacific (Singapore)" } ],
+                                                        [ "...", { "region": "ap-southeast-2", "id": "parse8", "visible": true, "label": "ParseAuth Asia Pacific (Sydney)" } ],
+                                                        [ "...", { "region": "eu-west-2", "id": "parse9", "visible": true, "label": "ParseAuth EU (London)" } ],
+                                                        [ "...", { "region": "eu-central-1", "id": "parse10", "visible": true, "label": "ParseAuth EU (Frankfurt)" } ],
+                                                        [ "...", { "region": "sa-east-1", "id": "parse11", "visible": true, "label": "ParseAuth South America (Sao Paulo)" } ],
+                                                        [ "...", "${CloudFrontRegion}.${RefreshAuthLambdaName}", ".", "${CloudFrontRegion}.${RefreshAuthLambdaName}:${RefreshAuthLambdaVersion}", { "id": "refresh1", "visible": true, "label": "RefreshAuth US-East (N. Virginia)" } ],
+                                                        [ "...", { "region": "us-east-2", "id": "refresh2", "visible": true, "label": "RefreshAuth US-East (Ohio)" } ],
+                                                        [ "...", { "region": "us-west-2", "id": "refresh3", "visible": true, "label": "RefreshAuth US-West (Oregon)" } ],
+                                                        [ "...", { "region": "ap-south-1", "id": "refresh4", "visible": true, "label": "RefreshAuth Asia Pacific (Mumbai)" } ],
+                                                        [ "...", { "region": "ap-northeast-1", "id": "refresh5", "visible": true, "label": "RefreshAuth Asia Pacific (Tokyo)" } ],
+                                                        [ "...", { "region": "ap-northeast-2", "id": "refresh6", "visible": true, "label": "RefreshAuth Asia Pacific (Seoul)" } ],
+                                                        [ "...", { "region": "ap-southeast-1", "id": "refresh7", "visible": true, "label": "RefreshAuth Asia Pacific (Singapore)" } ],
+                                                        [ "...", { "region": "ap-southeast-2", "id": "refresh8", "visible": true, "label": "RefreshAuth Asia Pacific (Sydney)" } ],
+                                                        [ "...", { "region": "eu-west-2", "id": "refresh9", "visible": true, "label": "RefreshAuth EU (London)" } ],
+                                                        [ "...", { "region": "eu-central-1", "id": "refresh10", "visible": true, "label": "RefreshAuth EU (Frankfurt)" } ],
+                                                        [ "...", { "region": "sa-east-1", "id": "refresh11", "visible": true, "label": "RefreshAuth South America (Sao Paulo)" } ],
+                                                        [ { "expression": "(check1+check2+check3+check4+check5+check6+check7+check8+check9+check10+check11)", "label": "CheckAuth Global (sum)" } ],
+                                                        [ { "expression": "(parse1+parse2+parse3+parse4+parse5+parse6+parse7+parse8+parse9+parse10+parse11)", "label": "ParseAuth Global (sum)" } ],
+                                                        [ { "expression": "(refresh1+refresh2+refresh3+refresh4+refresh5+refresh6+refresh7+refresh8+refresh9+refresh10+refresh11)", "label": "RefreshAuth Global (sum)" } ]
+                                                    ],
+                                                    "region": "${CloudFrontRegion}",
+                                                    "title": "Throttles",
+                                                    "period": 300,
+                                                    "stat": "Sum"
+                                                }
+                                            },
+                                            {
+                                            "type": "metric",
+                                            "x": 0,
+                                            "y": 48,
+                                            "width": 24,
+                                            "height": 12,
+                                            "properties": {
+                                                    "view": "timeSeries",
+                                                    "stacked": false,
+                                                    "metrics": [
+                                                        [ "AWS/Lambda", "Duration", "FunctionName", "${CloudFrontRegion}.${CheckAuthLambdaName}", "Resource", "${CloudFrontRegion}.${CheckAuthLambdaName}:${CheckAuthLambdaVersion}", { "id": "check1", "visible": true, "label": "CheckAuth US-East (N. Virginia)" } ],
+                                                        [ "...", { "region": "us-east-2", "id": "check2", "visible": true, "label": "CheckAuth US-East (Ohio)" } ],
+                                                        [ "...", { "region": "us-west-2", "id": "check3", "visible": true, "label": "CheckAuth US-West (Oregon)" } ],
+                                                        [ "...", { "region": "ap-south-1", "id": "check4", "visible": true, "label": "CheckAuth Asia Pacific (Mumbai)" } ],
+                                                        [ "...", { "region": "ap-northeast-1", "id": "check5", "visible": true, "label": "CheckAuth Asia Pacific (Tokyo)" } ],
+                                                        [ "...", { "region": "ap-northeast-2", "id": "check6", "visible": true, "label": "CheckAuth Asia Pacific (Seoul)" } ],
+                                                        [ "...", { "region": "ap-southeast-1", "id": "check7", "visible": true, "label": "CheckAuth Asia Pacific (Singapore)" } ],
+                                                        [ "...", { "region": "ap-southeast-2", "id": "check8", "visible": true, "label": "CheckAuth Asia Pacific (Sydney)" } ],
+                                                        [ "...", { "region": "eu-west-2", "id": "check9", "visible": true, "label": "CheckAuth EU (London)" } ],
+                                                        [ "...", { "region": "eu-central-1", "id": "check10", "visible": true, "label": "CheckAuth EU (Frankfurt)" } ],
+                                                        [ "...", { "region": "sa-east-1", "id": "check11", "visible": true, "label": "CheckAuth South America (Sao Paulo)" } ],
+                                                        [ "...", "${CloudFrontRegion}.${ParseAuthLambdaName}", ".", "${CloudFrontRegion}.${ParseAuthLambdaName}:${ParseAuthLambdaVersion}", { "id": "parse1", "visible": true, "label": "ParseAuth US-East (N. Virginia)" } ],
+                                                        [ "...", { "region": "us-east-2", "id": "parse2", "visible": true, "label": "ParseAuth US-East (Ohio)" } ],
+                                                        [ "...", { "region": "us-west-2", "id": "parse3", "visible": true, "label": "ParseAuth US-West (Oregon)" } ],
+                                                        [ "...", { "region": "ap-south-1", "id": "parse4", "visible": true, "label": "ParseAuth Asia Pacific (Mumbai)" } ],
+                                                        [ "...", { "region": "ap-northeast-1", "id": "parse5", "visible": true, "label": "ParseAuth Asia Pacific (Tokyo)" } ],
+                                                        [ "...", { "region": "ap-northeast-2", "id": "parse6", "visible": true, "label": "ParseAuth Asia Pacific (Seoul)" } ],
+                                                        [ "...", { "region": "ap-southeast-1", "id": "parse7", "visible": true, "label": "ParseAuth Asia Pacific (Singapore)" } ],
+                                                        [ "...", { "region": "ap-southeast-2", "id": "parse8", "visible": true, "label": "ParseAuth Asia Pacific (Sydney)" } ],
+                                                        [ "...", { "region": "eu-west-2", "id": "parse9", "visible": true, "label": "ParseAuth EU (London)" } ],
+                                                        [ "...", { "region": "eu-central-1", "id": "parse10", "visible": true, "label": "ParseAuth EU (Frankfurt)" } ],
+                                                        [ "...", { "region": "sa-east-1", "id": "parse11", "visible": true, "label": "ParseAuth South America (Sao Paulo)" } ],
+                                                        [ "...", "${CloudFrontRegion}.${RefreshAuthLambdaName}", ".", "${CloudFrontRegion}.${RefreshAuthLambdaName}:${RefreshAuthLambdaVersion}", { "id": "refresh1", "visible": true, "label": "RefreshAuth US-East (N. Virginia)" } ],
+                                                        [ "...", { "region": "us-east-2", "id": "refresh2", "visible": true, "label": "RefreshAuth US-East (Ohio)" } ],
+                                                        [ "...", { "region": "us-west-2", "id": "refresh3", "visible": true, "label": "RefreshAuth US-West (Oregon)" } ],
+                                                        [ "...", { "region": "ap-south-1", "id": "refresh4", "visible": true, "label": "RefreshAuth Asia Pacific (Mumbai)" } ],
+                                                        [ "...", { "region": "ap-northeast-1", "id": "refresh5", "visible": true, "label": "RefreshAuth Asia Pacific (Tokyo)" } ],
+                                                        [ "...", { "region": "ap-northeast-2", "id": "refresh6", "visible": true, "label": "RefreshAuth Asia Pacific (Seoul)" } ],
+                                                        [ "...", { "region": "ap-southeast-1", "id": "refresh7", "visible": true, "label": "RefreshAuth Asia Pacific (Singapore)" } ],
+                                                        [ "...", { "region": "ap-southeast-2", "id": "refresh8", "visible": true, "label": "RefreshAuth Asia Pacific (Sydney)" } ],
+                                                        [ "...", { "region": "eu-west-2", "id": "refresh9", "visible": true, "label": "RefreshAuth EU (London)" } ],
+                                                        [ "...", { "region": "eu-central-1", "id": "refresh10", "visible": true, "label": "RefreshAuth EU (Frankfurt)" } ],
+                                                        [ "...", { "region": "sa-east-1", "id": "refresh11", "visible": true, "label": "RefreshAuth South America (Sao Paulo)" } ],
+                                                        [ { "expression": "(check1+check2+check3+check4+check5+check6+check7+check8+check9+check10+check11)/11", "label": "CheckAuth Global (avg)" } ],
+                                                        [ { "expression": "(parse1+parse2+parse3+parse4+parse5+parse6+parse7+parse8+parse9+parse10+parse11)/11", "label": "ParseAuth Global (avg)" } ],
+                                                        [ { "expression": "(refresh1+refresh2+refresh3+refresh4+refresh5+refresh6+refresh7+refresh8+refresh9+refresh10+refresh11)/11", "label": "RefreshAuth Global (avg)" } ]
+                                                    ],
+                                                    "region": "${CloudFrontRegion}",
+                                                    "title": "Duration (ms)",
+                                                    "period": 300,
+                                                    "stat": "Sum"
+                                                }
+                                            },
+                                            {
+                                                "type": "metric",
+                                                "x": 0,
+                                                "y": 36,
+                                                "width": 12,
+                                                "height": 12,
+                                                "properties": {
+                                                    "view": "timeSeries",
+                                                    "stacked": false,
+                                                    "metrics": [
+                                                        [ "AWS/S3", "BucketSizeBytes", "StorageType", "StandardStorage", "BucketName", "${S3WebPagesBucket}", { "period": 86400 } ],
+                                                        [ ".", "NumberOfObjects", ".", "AllStorageTypes", ".", ".", { "period": 86400 } ]
+                                                    ],
+                                                    "region": "${CloudFrontRegion}",
+                                                    "title": "S3 Bucket"
+                                                }
+                                            },
+                                            {
+                                                "type": "metric",
+                                                "width": 12,
+                                                "height": 12,
+                                                "properties": {
+                                                    "title": "${CloudfrontId}-4xxErrorRateAlarm",
+                                                    "annotations": {
+                                                        "alarms": [
+                                                            "${4xxErrorRateAlarm}"
+                                                        ]
+                                                    },
+                                                    "view": "timeSeries",
+                                                    "stacked": false
+                                                }
+                                            },
+                                            {
+                                                "type": "metric",
+                                                "width": 12,
+                                                "height": 12,
+                                                "properties": {
+                                                    "title": "${CloudfrontId}-5xxErrorRateAlarm",
+                                                    "annotations": {
+                                                        "alarms": [
+                                                            "${5xxErrorRateAlarm}"
+                                                        ]
+                                                    },
+                                                    "yAxis": {
+                                                        "left": {
+                                                            "min": 0
+                                                        }
+                                                    },
+                                                    "view": "timeSeries",
+                                                    "stacked": false
+                                                }
+                                            },
+                                            {
+                                                "type": "metric",
+                                                "width": 12,
+                                                "height": 12,
+                                                "properties": {
+                                                    "title": "${CloudfrontId}-S3BucketSizeAlarm",
+                                                    "annotations": {
+                                                        "alarms": [
+                                                            "${S3BucketSizeAlarm}"
+                                                        ]
+                                                    },
+                                                    "view": "timeSeries",
+                                                    "stacked": false
+                                                }
+                                            }
+                                        ]
+                                    }'
+                                -   CloudfrontId: !Ref CloudfrontId
+                                    CheckAuthLambdaName: !Ref CheckAuthLambdaName
+                                    CheckAuthLambdaVersion: !Ref CheckAuthLambdaVersion
+                                    ParseAuthLambdaName: !Ref ParseAuthLambdaName
+                                    ParseAuthLambdaVersion: !Ref ParseAuthLambdaVersion
+                                    RefreshAuthLambdaName: !Ref RefreshAuthLambdaName
+                                    RefreshAuthLambdaVersion: !Ref RefreshAuthLambdaVersion
+                                    S3WebPagesBucket: !Ref S3WebPagesBucket
+                                    4xxErrorRateAlarm: !GetAtt 4xxErrorRateAlarm.Arn
+                                    5xxErrorRateAlarm: !GetAtt 5xxErrorRateAlarm.Arn
+                                    S3BucketSizeAlarm: !GetAtt S3BucketSizeAlarm.Arn
+
+
+Outputs:
+  Dashboard:
+    Description: 'CloudFront Dashboard'
+    Value:  !Join ["", [!Sub 'https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=', !Ref CloudWatchDashboard] ]
+    Export:
+      Name: !Sub '${AWS::StackName}-Dashboard'

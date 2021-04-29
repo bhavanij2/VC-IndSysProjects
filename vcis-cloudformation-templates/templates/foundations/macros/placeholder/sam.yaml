@@ -1,0 +1,37 @@
+Transform: ['AWS::Serverless-2016-10-31', VcisCommonTagsMacro]
+
+Parameters:
+    Env:
+      Type: String
+      Description: Environment in which resources should be deployed
+      AllowedValues:
+        - non-prod
+        - prod
+    Timeout:
+        Description: "Timeout [s]"
+        Type: Number
+        Default: 30
+    MemorySize:
+        Description: "Memory Size [MB]"
+        Type: Number
+        Default: 128
+    ProjectModuleTag:
+      Type: AWS::SSM::Parameter::Value<String>
+      Description: Project Module Tag Value
+Resources:
+    PlaceholderMacroFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            Handler: index.handler
+            Runtime: nodejs12.x
+            CodeUri: ./
+            Timeout:
+              Ref: Timeout
+            MemorySize:
+              Ref: MemorySize
+
+    PlaceholderMacro:
+      Type: AWS::CloudFormation::Macro
+      Properties:
+        Name: VcisPlaceholderMacro
+        FunctionName: !GetAtt PlaceholderMacroFunction.Arn

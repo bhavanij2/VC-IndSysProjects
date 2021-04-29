@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+
+  # SSM parameter for Project Module tag
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  KMS:
+    Description: "SSM Parameter Name containing KMS Arn for decrypting keys"
+    Type: AWS::SSM::Parameter::Value<String>
+
+Resources:
+{{{PREVIOUS_RESOURCES}}}
+  {{#each SHARED_TOPICS}}
+  {{TopicSAMResourceName}}:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: '{{DisplayName}}'
+      TopicName: {{TopicName}}
+      {{#KmsMasterKeyId}}
+      KmsMasterKeyId: !Ref KMS
+      {{/KmsMasterKeyId}}
+      Subscription:
+        {{#each Subscriptions}}
+          - Endpoint: !Sub '{{Endpoint}}-${Env}'
+            Protocol: {{Protocol}}
+        {{/each}}
+
+  {{TopicSAMResourceName}}Policy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2008-10-17"
+        Id: "__default_policy_ID"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - SNS:GetTopicAttributes
+              - SNS:SetTopicAttributes
+              - SNS:AddPermission
+              - SNS:RemovePermission
+              - SNS:DeleteTopic
+              - SNS:Subscribe
+              - SNS:ListSubscriptionsByTopic
+              - SNS:Publish
+              - SNS:Receive
+            Resource: !Join
+              - ''
+              - - !Ref {{TopicSAMResourceName}}
+                - '-'
+                - !Ref Env
+
+            Condition:
+              StringEquals:
+                AWS:SourceOwner: {{AccountNumber}}
+      Topics:
+        - !Ref {{TopicSAMResourceName}}
+    DependsOn:
+      - {{TopicSAMResourceName}}
+  {{/each}}
+
+Outputs:
+{{{PREVIOUS_OUTPUTS}}}
+  {{#each SHARED_TOPICS}}
+  {{TopicSAMResourceName}}Output:
+    Description: '{{TopicSAMResourceName}}Output'
+    Value: !Ref {{TopicSAMResourceName}}
+    Export:
+      Name: !Sub '${AWS::StackName}-{{TopicSAMResourceName}}'
+  {{/each}}

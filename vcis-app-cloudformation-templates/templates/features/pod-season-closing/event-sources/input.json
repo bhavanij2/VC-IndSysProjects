@@ -1,0 +1,38 @@
+{
+  "baseBranch": "develop",
+  "migrationBranchName": "VCT-10607-pod-season-closing-event-sources",
+  "commitMessagePrefix": "VCT-10607 - pod-season-closing-event-sources",
+  "githubTokenSSM": "/vcis/non-prod/app/github/token-gkngg",
+  "tags": {
+    "teamName": "stark",
+    "featureName": "pod-season-closing",
+    "applicationName": "Industry System",
+    "moduleName": "IS"
+  },
+  "withDiscovery": true,
+  "queues": [
+    {
+      "name": "brazil-value-capture-pod-season-closing-non-fixed-grower-updater-dev",
+      "withRedrivePolicy": true
+    },
+    {
+      "name": "brazil-value-capture-pod-season-closing-bulk-dev",
+      "withRedrivePolicy": true
+    },
+    {
+      "name": "brazil-value-capture-pod-season-closing-updater-dev",
+      "withRedrivePolicy": true
+    },
+    {
+      "name": "brazil-value-capture-pod-season-closing-dev",
+      "withRedrivePolicy": true
+    },
+    {
+      "name": "brazil-value-capture-topic-persister-dev",
+      "withRedrivePolicy": true
+    }
+  ],
+  "topics": [
+    "arn:aws:sns:us-east-1:285453578300:brazil-value-capture-pod-season-closing-updated-topic-dev"
+  ]
+}

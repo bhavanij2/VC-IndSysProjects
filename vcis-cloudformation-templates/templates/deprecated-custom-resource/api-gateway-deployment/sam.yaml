@@ -1,0 +1,36 @@
+Transform: 'AWS::Serverless-2016-10-31'
+Parameters:
+    Timeout:
+        Description: "Timeout [s]"
+        Type: Number
+        Default: 60
+    MemorySize:
+        Description: "Memory Size [MB]"
+        Type: Number
+        Default: 128
+Resources:
+    ApiGatewayUpdateStageFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            Handler: index.handler
+            Runtime: nodejs10.x
+            CodeUri: ./
+            Timeout:
+              Ref: Timeout
+            MemorySize:
+              Ref: MemorySize
+            Policies:
+              - Statement:
+                - Effect: Allow
+                  Action:
+                    - apigateway:PATCH
+                    - apigateway:GET
+                  Resource:
+                    - !Sub 'arn:aws:apigateway:${AWS::Region}::/*'
+                    
+Outputs:
+  ApiGatewayUpdateStageFunctionCustomResource:
+    Description: "Api Gateway Update Stage Function For CF Custom Resource"
+    Value: !GetAtt ApiGatewayUpdateStageFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiGatewayUpdateStageFunctionArn"

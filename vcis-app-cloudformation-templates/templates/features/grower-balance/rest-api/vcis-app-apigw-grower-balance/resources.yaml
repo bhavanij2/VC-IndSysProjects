@@ -1,0 +1,227 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VCIS API Gateway
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+
+  RestApiName:
+    Type: String
+    Description: 'The API Name (eg: vcis-pod-credit-exemption-balance)'
+
+  RestApiDescription:
+    Type: String
+    Description: Rest API Description
+
+  StageName:
+    Type: String
+    Description: The name of the API Stage. Default is 'release' stage
+    Default: 'release'
+
+  RestApiCustomDomainName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Rest API Custom Domain Name. Default value is 'api.pod-np.its-plus.com' (NonProd) and 'api.pod.its-plus.com' (Prod)
+
+  LambdaAuthorizerARN:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Lambda Authorizer ARN. Default is '/vcis/${Env}/infra/lambda-authorizer/arn'
+
+  MinimumCompressionSize:
+    Type: Number
+    Default: 0
+    Description: 'Compression or decompression is not applied on the payload if the payload size is smaller than this value. Setting it to zero allows compression for any payload size.'
+
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+
+Resources:
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${RestApiName}-${Env}'
+      Description: !Ref RestApiDescription
+      ApiKeySourceType: HEADER
+      MinimumCompressionSize: !Ref MinimumCompressionSize
+      EndpointConfiguration:
+        Types:
+          - EDGE
+
+    ## Lambda Authorizer
+  ApiGatewayLambdaAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    DependsOn: RestApi
+    Properties:
+      Name: 'vcis-shared-lambda-authorizer'
+      Type: 'REQUEST'
+      AuthorizerResultTtlInSeconds: 0
+      AuthorizerUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaAuthorizerARN}/invocations'
+      IdentitySource: 'method.request.header.Authorization'
+      RestApiId: !Ref RestApi
+
+  Deployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+    - CreditexemptionPath
+    - CreditexemptionbalancePath
+    - Creditexemptionbalanceb2bPath
+    - Creditexemptionbalanceb2bdocPath
+    - Creditexemptionbalanceb2bdocswaggerjsonPath
+    - Creditexemptionbalanceb2bdocswaggerjsonOptionsMethod
+    Properties:
+      Description: API Deployment
+      RestApiId: !Ref RestApi
+
+  Stage:
+    Type: AWS::ApiGateway::Stage
+    DependsOn: Deployment
+    Properties:
+      RestApiId: !Ref RestApi
+      DeploymentId: !Ref Deployment
+      StageName: !Ref StageName
+
+  ApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    DependsOn: Stage
+    Properties:
+      DomainName: !Ref RestApiCustomDomainName
+      BasePath: !Sub '${RestApiName}-${Env}'
+      RestApiId: !Ref RestApi
+      Stage: !Ref Stage
+
+  # SSM Output Parameters
+  LambdaAuthorizerSsmParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: !Ref ApiGatewayLambdaAuthorizer
+      Description: !Sub ${RestApiName} - Lambda Authorizer ID
+      Name: !Sub '/vcis/${Env}/infra/api-gateway/lambda-auth-id-${RestApiName}-${Env}'
+
+
+  CreditexemptionPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !GetAtt RestApi.RootResourceId
+      PathPart: "credit-exemption"
+      RestApiId: !Ref RestApi
+
+  CreditexemptionbalancePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref CreditexemptionPath
+      PathPart: "balance"
+      RestApiId: !Ref RestApi
+
+  Creditexemptionbalanceb2bPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref CreditexemptionbalancePath
+      PathPart: "b2b"
+      RestApiId: !Ref RestApi
+
+  Creditexemptionbalanceb2bdocPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref Creditexemptionbalanceb2bPath
+      PathPart: "doc"
+      RestApiId: !Ref RestApi
+
+  Creditexemptionbalanceb2bdocswaggerjsonPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref Creditexemptionbalanceb2bdocPath
+      PathPart: "swagger.json"
+      RestApiId: !Ref RestApi
+
+  Creditexemptionbalanceb2bdocswaggerjsonOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref Creditexemptionbalanceb2bdocswaggerjsonPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+
+Outputs:
+  Endpoint:
+    Description: Rest Api Endpoint URL
+    Value: !Sub 'https://${RestApiName}-${Env}.execute-api.${AWS::Region}.amazonaws.com'
+
+  RestApiGatewayId:
+    Description: ApiGatewayId
+    Value: !Ref RestApi
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayId'
+
+  RootResourceId:
+    Description: RootResourceId
+    Value: !GetAtt RestApi.RootResourceId
+    Export:
+      Name: !Sub '${AWS::StackName}-RootResourceId'
+
+  LambdaAuthorizerId:
+    Description: LambdaAuthorizerId
+    Value: !Ref ApiGatewayLambdaAuthorizer
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaAuthorizerId'
+
+  CreditexemptionPath:
+    Value: !Ref CreditexemptionPath
+    Export:
+      Name: !Sub '${AWS::StackName}-CreditexemptionPath'
+  CreditexemptionbalancePath:
+    Value: !Ref CreditexemptionbalancePath
+    Export:
+      Name: !Sub '${AWS::StackName}-CreditexemptionbalancePath'
+  Creditexemptionbalanceb2bPath:
+    Value: !Ref Creditexemptionbalanceb2bPath
+    Export:
+      Name: !Sub '${AWS::StackName}-Creditexemptionbalanceb2bPath'
+  Creditexemptionbalanceb2bdocPath:
+    Value: !Ref Creditexemptionbalanceb2bdocPath
+    Export:
+      Name: !Sub '${AWS::StackName}-Creditexemptionbalanceb2bdocPath'
+  Creditexemptionbalanceb2bdocswaggerjsonPath:
+    Value: !Ref Creditexemptionbalanceb2bdocswaggerjsonPath
+    Export:
+      Name: !Sub '${AWS::StackName}-Creditexemptionbalanceb2bdocswaggerjsonPath'

@@ -1,0 +1,15 @@
+{
+  "Parameters" : {
+    "Env": "it",
+    "ProjectModuleTag": "/vcis/it/infra/tags/project-module-value-capture-industry-system",
+    "VpcCidrBlock": "/vcis/it/infra/vpc/cidr-block",
+    "PublicSubnets": "/vcis/it/infra/vpc/public-cidr-blocks",
+    "PrivateSubnets": "/vcis/it/infra/vpc/private-cidr-blocks",
+    "RdsSubnets": "/vcis/it/infra/vpc/rds-cidr-blocks",
+    "BastionInstanceType": "/vcis/it/infra/vpc/bastion-instance-type",
+    "BastionAMIId": "ami-06322531c9f2ad318",
+    "BastionHostKeyName": "/vcis/it/infra/vpc/bastion-keypair",
+    "BastionIps": "/vcis/it/infra/vpc/central-bastion-ips",
+    "InfraOpsSlackNotifierStackName": "vcis-it-infra-ops-slack-notifier"
+  }
+}

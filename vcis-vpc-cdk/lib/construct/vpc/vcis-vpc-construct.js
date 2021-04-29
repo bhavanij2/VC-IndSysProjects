@@ -1,0 +1,37 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const ec2 = require("@aws-cdk/aws-ec2");
+class VcisVpcConstruct {
+    constructor(scope, id, props) {
+        if (!props.vpcCidr) {
+            throw new Error('Error: VPC CIDR Input is required.');
+        }
+        if (!props.maxAZs) {
+            props.maxAZs = VcisVpcConstruct.DEFAULT_MAX_AZs;
+        }
+        this.vpc = new ec2.VpcNetwork(scope, id, {
+            cidr: props.vpcCidr,
+            maxAZs: props.maxAZs,
+            subnetConfiguration: [
+                {
+                    cidrMask: 24,
+                    name: 'public',
+                    subnetType: ec2.SubnetType.Public,
+                },
+                {
+                    cidrMask: 24,
+                    name: 'rds',
+                    subnetType: ec2.SubnetType.Isolated,
+                },
+                {
+                    cidrMask: 22,
+                    name: 'private',
+                    subnetType: ec2.SubnetType.Private,
+                }
+            ],
+        });
+    }
+}
+VcisVpcConstruct.DEFAULT_MAX_AZs = 2;
+exports.VcisVpcConstruct = VcisVpcConstruct;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoidmNpcy12cGMtY29uc3RydWN0LmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsidmNpcy12cGMtY29uc3RydWN0LnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7O0FBQ0Esd0NBQXlDO0FBT3pDLE1BQWEsZ0JBQWdCO0lBSXpCLFlBQVksS0FBZ0IsRUFBRSxFQUFVLEVBQUUsS0FBbUI7UUFFekQsSUFBSSxDQUFDLEtBQUssQ0FBQyxPQUFPLEVBQUU7WUFDaEIsTUFBTSxJQUFJLEtBQUssQ0FBQyxvQ0FBb0MsQ0FBQyxDQUFDO1NBQ3pEO1FBRUQsSUFBRyxDQUFDLEtBQUssQ0FBQyxNQUFNLEVBQUU7WUFDZCxLQUFLLENBQUMsTUFBTSxHQUFHLGdCQUFnQixDQUFDLGVBQWUsQ0FBQztTQUNuRDtRQUVELElBQUksQ0FBQyxHQUFHLEdBQUcsSUFBSSxHQUFHLENBQUMsVUFBVSxDQUFDLEtBQUssRUFBRSxFQUFFLEVBQUU7WUFDckMsSUFBSSxFQUFFLEtBQUssQ0FBQyxPQUFPO1lBQ25CLE1BQU0sRUFBRSxLQUFLLENBQUMsTUFBTTtZQUNwQixtQkFBbUIsRUFBRTtnQkFDakI7b0JBQ0ksUUFBUSxFQUFFLEVBQUU7b0JBQ1osSUFBSSxFQUFFLFFBQVE7b0JBQ2QsVUFBVSxFQUFFLEdBQUcsQ0FBQyxVQUFVLENBQUMsTUFBTTtpQkFDcEM7Z0JBQ0Q7b0JBQ0ksUUFBUSxFQUFFLEVBQUU7b0JBQ1osSUFBSSxFQUFFLEtBQUs7b0JBQ1gsVUFBVSxFQUFFLEdBQUcsQ0FBQyxVQUFVLENBQUMsUUFBUTtpQkFDdEM7Z0JBQ0Q7b0JBQ0ksUUFBUSxFQUFFLEVBQUU7b0JBQ1osSUFBSSxFQUFFLFNBQVM7b0JBQ2YsVUFBVSxFQUFFLEdBQUcsQ0FBQyxVQUFVLENBQUMsT0FBTztpQkFDckM7YUFFSjtTQUNKLENBQUMsQ0FBQztJQUVQLENBQUM7O0FBcEN1QixnQ0FBZSxHQUFHLENBQUMsQ0FBQztBQURoRCw0Q0FzQ0MiLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBDb25zdHJ1Y3QgfSBmcm9tIFwiQGF3cy1jZGsvY2RrXCI7XG5pbXBvcnQgZWMyID0gcmVxdWlyZSgnQGF3cy1jZGsvYXdzLWVjMicpO1xuXG5pbnRlcmZhY2UgVmNpc1ZwY1Byb3BzIHtcbiAgICB2cGNDaWRyOiBzdHJpbmcsXG4gICAgbWF4QVpzPzogbnVtYmVyLFxufVxuXG5leHBvcnQgY2xhc3MgVmNpc1ZwY0NvbnN0cnVjdCB7XG4gICAgcHJpdmF0ZSBzdGF0aWMgcmVhZG9ubHkgREVGQVVMVF9NQVhfQVpzID0gMjtcbiAgICByZWFkb25seSB2cGM6IGVjMi5WcGNOZXR3b3JrO1xuXG4gICAgY29uc3RydWN0b3Ioc2NvcGU6IENvbnN0cnVjdCwgaWQ6IHN0cmluZywgcHJvcHM6IFZjaXNWcGNQcm9wcykge1xuXG4gICAgICAgIGlmICghcHJvcHMudnBjQ2lkcikge1xuICAgICAgICAgICAgdGhyb3cgbmV3IEVycm9yKCdFcnJvcjogVlBDIENJRFIgSW5wdXQgaXMgcmVxdWlyZWQuJyk7XG4gICAgICAgIH1cblxuICAgICAgICBpZighcHJvcHMubWF4QVpzKSB7XG4gICAgICAgICAgICBwcm9wcy5tYXhBWnMgPSBWY2lzVnBjQ29uc3RydWN0LkRFRkFVTFRfTUFYX0FacztcbiAgICAgICAgfVxuXG4gICAgICAgIHRoaXMudnBjID0gbmV3IGVjMi5WcGNOZXR3b3JrKHNjb3BlLCBpZCwge1xuICAgICAgICAgICAgY2lkcjogcHJvcHMudnBjQ2lkcixcbiAgICAgICAgICAgIG1heEFaczogcHJvcHMubWF4QVpzLFxuICAgICAgICAgICAgc3VibmV0Q29uZmlndXJhdGlvbjogW1xuICAgICAgICAgICAgICAgIHtcbiAgICAgICAgICAgICAgICAgICAgY2lkck1hc2s6IDI0LFxuICAgICAgICAgICAgICAgICAgICBuYW1lOiAncHVibGljJyxcbiAgICAgICAgICAgICAgICAgICAgc3VibmV0VHlwZTogZWMyLlN1Ym5ldFR5cGUuUHVibGljLFxuICAgICAgICAgICAgICAgIH0sXG4gICAgICAgICAgICAgICAge1xuICAgICAgICAgICAgICAgICAgICBjaWRyTWFzazogMjQsXG4gICAgICAgICAgICAgICAgICAgIG5hbWU6ICdyZHMnLFxuICAgICAgICAgICAgICAgICAgICBzdWJuZXRUeXBlOiBlYzIuU3VibmV0VHlwZS5Jc29sYXRlZCxcbiAgICAgICAgICAgICAgICB9LFxuICAgICAgICAgICAgICAgIHtcbiAgICAgICAgICAgICAgICAgICAgY2lkck1hc2s6IDIyLFxuICAgICAgICAgICAgICAgICAgICBuYW1lOiAncHJpdmF0ZScsXG4gICAgICAgICAgICAgICAgICAgIHN1Ym5ldFR5cGU6IGVjMi5TdWJuZXRUeXBlLlByaXZhdGUsXG4gICAgICAgICAgICAgICAgfVxuXG4gICAgICAgICAgICBdLFxuICAgICAgICB9KTtcblxuICAgIH1cbn0iXX0=

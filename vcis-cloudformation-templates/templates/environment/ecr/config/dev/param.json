@@ -1,0 +1,14 @@
+[
+  {
+    "ParameterKey": "ImageName",
+    "ParameterValue": "ecr"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/dev/infra/tags/project-module-value-capture-industry-system"
+  }
+]

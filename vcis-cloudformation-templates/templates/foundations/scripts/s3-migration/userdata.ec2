@@ -1,0 +1,8 @@
+sudo yum -y update
+sudo yum install python3
+wget <>
+unzip <>.zip
+sudo pip3 install -r requirements.txt
+aws configure set default.s3.max_concurrent_requests 40
+aws configure set default.s3.max_queue_size 10000
+aws configure set s3.multipart_threshold 128MB

@@ -1,0 +1,11 @@
+{
+  "Parameters" : {
+    "Env": "prod",
+    "RestApiName" : "vcis-app-apigw-pod-rol-fixed-volume_update",
+    "RestApiDescription" : "POD - ROL Fixed Volume API",
+    "LambdaAuthorizerStackName": "vcis-app-pod-ping-authorizer-prod",
+    "RestApiCustomDomainName" : "/vcis/prod/infra/rest-api-domain/name",
+    "ProjectModuleTag": "/vcis/prod/infra/tags/project-module-value-capture-industry-system",
+    "CustomTags": "Key=mon:feature,Value=pod-rol-fixed-volume,Key=mon:team,Value=stark,Key=mon:application,Value=Industry System,Key=mon:module,Value=IS"
+  }
+}

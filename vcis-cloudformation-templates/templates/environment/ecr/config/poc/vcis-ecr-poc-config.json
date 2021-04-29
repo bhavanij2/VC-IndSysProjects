@@ -1,0 +1,7 @@
+{
+  "Parameters" : {
+    "ImageName": "ecr",
+    "Env" : "poc",
+    "ProjectModuleTag": "/vcis/poc/infra/tags/project-module-value-capture-industry-system"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "Parameters": {
+    "Env": "non-prod",
+    "ProjectModuleTag": "/vcis/non-prod/infra/tags/project-module-value-capture-industry-system",
+    "VcisDefaultKMSParameter": "/vcis/common/infra/kms/vcisAccount-temp"
+  }
+}

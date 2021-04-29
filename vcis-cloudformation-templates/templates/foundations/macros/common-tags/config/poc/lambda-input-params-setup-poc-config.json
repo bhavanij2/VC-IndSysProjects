@@ -1,0 +1,22 @@
+[
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "tagging-macro"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "poc"
+  },
+  {
+    "ParameterKey": "BuildSpecPath",
+    "ParameterValue": "templates/macros/common-tags/lambda/buildspec.yml"
+  },
+  {
+    "ParameterKey": "TemplatePath",
+    "ParameterValue": "templates/macros/common-tags"
+  },
+  {
+    "ParameterKey": "TemplateFile",
+    "ParameterValue": "common-tags.yml"
+  }
+]

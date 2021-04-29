@@ -1,0 +1,16 @@
+version: 0.2
+env:
+  parameter-store:
+    S3_BUCKET: "/vcis/${ENV}/infra/code-pipeline/lambda/s3-artifact-store-bucket"
+
+phases:
+  install:
+    runtime-versions:
+        nodejs: 8
+  build:
+    commands:
+      - npm install
+      - aws cloudformation package --template saml.yaml --s3-bucket $S3_BUCKET --output-template post-saml.yaml
+artifacts:
+    files:
+        - post-saml.yaml

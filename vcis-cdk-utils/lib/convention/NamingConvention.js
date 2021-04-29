@@ -1,0 +1,9 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+class NamingConvention {
+    static apply(stackName, resourceName) {
+        return `${stackName}/${resourceName}`;
+    }
+}
+exports.NamingConvention = NamingConvention;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiTmFtaW5nQ29udmVudGlvbi5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIk5hbWluZ0NvbnZlbnRpb24udHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7QUFBQSxNQUFhLGdCQUFnQjtJQUV6QixNQUFNLENBQUMsS0FBSyxDQUFDLFNBQWlCLEVBQUUsWUFBb0I7UUFDaEQsT0FBTyxHQUFHLFNBQVMsSUFBSSxZQUFZLEVBQUUsQ0FBQztJQUMxQyxDQUFDO0NBQ0o7QUFMRCw0Q0FLQyIsInNvdXJjZXNDb250ZW50IjpbImV4cG9ydCBjbGFzcyBOYW1pbmdDb252ZW50aW9uIHtcblxuICAgIHN0YXRpYyBhcHBseShzdGFja05hbWU6IHN0cmluZywgcmVzb3VyY2VOYW1lOiBzdHJpbmcpIHtcbiAgICAgICAgcmV0dXJuIGAke3N0YWNrTmFtZX0vJHtyZXNvdXJjZU5hbWV9YDtcbiAgICB9XG59XG4iXX0=

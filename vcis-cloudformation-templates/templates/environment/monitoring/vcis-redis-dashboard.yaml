@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VCIS Industry System Redis Dashboard'
+
+Parameters:
+  RedisStackName:
+      Type: 'String'
+      Description: The Redis Stack name
+
+Resources:
+  CloudWatchDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties: 
+      DashboardName:
+        Fn::ImportValue: !Sub "${RedisStackName}-ClusterName"
+      DashboardBody:
+        Fn::Sub:
+          - '{
+                "widgets": [
+                    {
+                        "type": "metric",
+                        "x": 0,
+                        "y": 5,
+                        "width": 9,
+                        "height": 6,
+                        "properties": {
+                            "view": "timeSeries",
+                            "stacked": true,
+                            "metrics": [
+                                [ "AWS/ElastiCache", "CPUUtilization", "CacheClusterId", "${ClusterName}-001" ],
+                                [ "...", "${ClusterName}-002" ]
+                            ],
+                            "region": "${AWS::Region}",
+                            "title": "CPU Utilization"
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 9,
+                        "y": 5,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "view": "timeSeries",
+                            "stacked": true,
+                            "metrics": [
+                                [ "AWS/ElastiCache", "EngineCPUUtilization", "CacheClusterId", "${ClusterName}-001" ],
+                                [ "...", "${ClusterName}-002" ]
+                            ],
+                            "region": "${AWS::Region}",
+                            "title": "Engine CPU Utilization"
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 15,
+                        "y": 5,
+                        "width": 6,
+                        "height": 6,
+                        "properties": {
+                            "view": "timeSeries",
+                            "stacked": true,
+                            "metrics": [
+                                [ "AWS/ElastiCache", "SwapUsage", "CacheClusterId", "${ClusterName}-001" ],
+                                [ "...", "${ClusterName}-002" ]
+                            ],
+                            "region": "${AWS::Region}",
+                            "title": "Swap Usage"
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 0,
+                        "y": 2,
+                        "width": 9,
+                        "height": 3,
+                        "properties": {
+                            "view": "timeSeries",
+                            "metrics": [
+                                [ "AWS/ElastiCache", "CurrConnections", "CacheClusterId", "${ClusterName}-001" ],
+                                [ "...", "${ClusterName}-002" ]
+                            ],
+                            "region": "${AWS::Region}",
+                            "title": "CurrConnections",
+                            "period": 300,
+                            "stacked": false
+                        }
+                    },
+                    {
+                        "type": "metric",
+                        "x": 9,
+                        "y": 2,
+                        "width": 12,
+                        "height": 3,
+                        "properties": {
+                            "view": "singleValue",
+                            "stacked": false,
+                            "metrics": [
+                                [ "AWS/ElastiCache", "Evictions", "CacheClusterId", "${ClusterName}-001" ],
+                                [ "...", "${ClusterName}-002" ]
+                            ],
+                            "region": "${AWS::Region}",
+                            "title": "Evictions"
+                        }
+                    },
+                    {
+                        "type": "alarm",
+                        "x": 0,
+                        "y": 0,
+                        "width": 24,
+                        "height": 2,
+                        "properties": {
+                            "title": "Alarms",
+                            "alarms": [
+                                "${CurrConnectionsAlarm}",
+                                "${EvictionsAlarm}",
+                                "${CPUUtilizationAlarm}"
+                            ]
+                        }
+                    }
+                ]
+            }'
+          - ClusterName:
+              Fn::ImportValue: !Sub "${RedisStackName}-ClusterName"
+            CPUUtilizationAlarm:
+              Fn::ImportValue: !Sub "${RedisStackName}-CPUUtilizationAlarm"
+            EvictionsAlarm:
+              Fn::ImportValue: !Sub "${RedisStackName}-EvictionsAlarm"            
+            CurrConnectionsAlarm:
+              Fn::ImportValue: !Sub "${RedisStackName}-CurrConnectionsAlarm"            
+    
+Outputs:
+  Dashboard:
+    Description: 'CloudFront Dashboard'
+    Value:  !Sub 'https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${CloudWatchDashboard}'
+    Export:
+      Name: !Sub '${AWS::StackName}-Dashboard'

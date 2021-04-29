@@ -1,0 +1,11 @@
+{
+  "Parameters" : {
+    "Env": "dev",
+    "RestApiName" : "vcis-app-pod-credit-exemption-transfer",
+    "RestApiDescription" : "POD - Credit Exemption Transfer API",
+    "LambdaAuthorizerStackName": "vcis-app-pod-ping-authorizer-dev",
+    "ProjectModuleTag": "/vcis/dev/infra/tags/project-module-pod",
+    "RestApiCustomDomainName": "/vcis/non-prod/infra/rest-api-domain/name",
+    "StageName": "dev"
+  }
+}

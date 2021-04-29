@@ -1,0 +1,295 @@
+{
+  "transformId": "019181870962::CommonTags",
+  "templateParameterValues": {
+    "SsmBastionIps": [
+      "52.22.113.235/32",
+      "52.39.76.251/32"
+    ],
+    "SsmVpcCidrBlock": "172.18.0.0/19",
+    "SsmPublicSubnets": [
+      "172.18.0.0/24",
+      "172.18.1.0/24"
+    ],
+    "SsmRdsSubnets": [
+      "172.18.2.0/24",
+      "172.18.3.0/24"
+    ],
+    "SsmBastionInstanceType": "t2.nano",
+    "SsmBastionHostKeyName": "vcis-nonprod-keypair",
+    "Env": "non-prod",
+    "SsmPrivateSubnets": [
+      "172.18.4.0/22",
+      "172.18.8.0/22"
+    ],
+    "ProjectModuleTag": "ValueCapture"
+  },
+  "fragment": {
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Outputs": {
+      "AvailabilityZone1Output": {
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-AvailabilityZone1"
+          }
+        },
+        "Description": "AvailabilityZone1",
+        "Value": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": {
+                "Ref": "AWS::Region"
+              }
+            }
+          ]
+        }
+      },
+      "RdsSubnet2Output": {
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-RdsSubnet2"
+          }
+        },
+        "Description": "RdsSubnet2",
+        "Value": {
+          "Ref": "VcisRdsSubnet2"
+        }
+      },
+      "PrivateSubnet1Output": {
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-PrivateSubnet1"
+          }
+        },
+        "Description": "PrivateSubnet1",
+        "Value": {
+          "Ref": "VcisPrivateSubnet1"
+        }
+      },
+      "VPCCIDROutput": {
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-VpcCidr"
+          }
+        },
+        "Description": "The CIDR range for the overall VPC",
+        "Value": {
+          "Fn::GetAtt": "VcisVpc.CidrBlock"
+        }
+      },
+      "VPCIDOutput": {
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-VpcId"
+          }
+        },
+        "Description": "VPCID",
+        "Value": {
+          "Ref": "VcisVpc"
+        }
+      },
+      "PrivateSubnet2Output": {
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-PrivateSubnet2"
+          }
+        },
+        "Description": "PrivateSubnet2",
+        "Value": {
+          "Ref": "VcisPrivateSubnet2"
+        }
+      },
+      "BastionHostKeyNameOutput": {
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-BastionHostKeyName"
+          }
+        },
+        "Description": "Key name used for the VPC's bastion hosts",
+        "Value": {
+          "Ref": "SsmBastionHostKeyName"
+        }
+      },
+      "SecondaryBastionDNSOutput": {
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-SecondaryBastionDNS"
+          }
+        },
+        "Description": "Secondary Bastion Host DNS entry",
+        "Value": {
+          "Fn::GetAtt": "VcisSecondaryBastionInstance.PublicDnsName"
+        }
+      },
+      "PublicSubnet2Output": {
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-PublicSubnet2"
+          }
+        },
+        "Description": "PublicSubnet2",
+        "Value": {
+          "Ref": "VcisPublicSubnet2"
+        }
+      },
+      "PublicSubnet1Output": {
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-PublicSubnet1"
+          }
+        },
+        "Description": "PublicSubnet1",
+        "Value": {
+          "Ref": "VcisPublicSubnet1"
+        }
+      },
+      "PrimaryBastionIPOutput": {
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-PrimaryBastionIP"
+          }
+        },
+        "Description": "Primary Bastion Host IP",
+        "Value": {
+          "Ref": "VcisPrimaryBastionInstanceEIP"
+        }
+      },
+      "SecondaryBastionIPOutput": {
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-SecondaryBastionIP"
+          }
+        },
+        "Description": "Secondary Bastion Host IP",
+        "Value": {
+          "Ref": "VcisSecondaryBastionInstanceEIP"
+        }
+      },
+      "PrimaryBastionDNSOutput": {
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-PrimaryBastionDNS"
+          }
+        },
+        "Description": "Primary Bastion DNS entry",
+        "Value": {
+          "Fn::GetAtt": "VcisPrimaryBastionInstance.PublicDnsName"
+        }
+      },
+      "RdsSubnet1Output": {
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-RdsSubnet1"
+          }
+        },
+        "Description": "RdsSubnet1",
+        "Value": {
+          "Ref": "VcisRdsSubnet1"
+        }
+      },
+      "BastionSecurityGroupOutput": {
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-BastionSecurityGroup"
+          }
+        },
+        "Description": "Bastion Host security group. Other servers in this VPC should only accept SSH traffic from this group.",
+        "Value": {
+          "Ref": "VcisBastionSecurityGroup"
+        }
+      },
+      "AvailabilityZone2Output": {
+        "Export": {
+          "Name": {
+            "Fn::Sub": "${AWS::StackName}-AvailabilityZone2"
+          }
+        },
+        "Description": "AvailabilityZone2",
+        "Value": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": {
+                "Ref": "AWS::Region"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "Resources": {
+      "VcisPublicSubnet2RouteTable": {
+        "Type": "AWS::EC2::RouteTable",
+        "Properties": {
+          "VpcId": {
+            "Ref": "VcisVpc"
+          },
+          "Tags": [
+            {
+              "Key": "mon:project",
+              "Value": "OVERRIDDEN"
+            }
+          ]
+        }
+      },
+      "VcisVpcPrivateSubnetsSsmParameter": {
+        "Type": "AWS::SSM::Parameter",
+        "Properties": {
+          "Type": "StringList",
+          "Description": "Private Subnets",
+          "Value": {
+            "Fn::Sub": "${VcisPrivateSubnet1},${VcisPrivateSubnet2}"
+          },
+          "Name": "/vcis/non-prod/infra/vpc/output/private-subnets",
+          "Tags": {
+            "mon:owner": "OVERRIDDEN" 
+          }
+        }
+      }
+    },
+    "Description": "VCIS VPC",
+    "Parameters": {
+      "SsmBastionIps": {
+        "Type": "AWS::SSM::Parameter::Value<CommaDelimitedList>",
+        "Description": "Bastion Instances IPs"
+      },
+      "Env": {
+        "Default": "non-prod",
+        "Type": "String",
+        "Description": "Environment in which to deploy the resources",
+        "AllowedValues": [
+          "non-prod",
+          "prod"
+        ]
+      },
+      "SsmPublicSubnets": {
+        "Type": "AWS::SSM::Parameter::Value<CommaDelimitedList>",
+        "Description": "Public Subnets CIDR Blocks"
+      },
+      "SsmPrivateSubnets": {
+        "Type": "AWS::SSM::Parameter::Value<CommaDelimitedList>",
+        "Description": "Private Subnets CIDR Blocks"
+      },
+      "SsmBastionInstanceType": {
+        "Type": "AWS::SSM::Parameter::Value<String>",
+        "Description": "Bastion Instance Type"
+      },
+      "SsmBastionHostKeyName": {
+        "Type": "AWS::SSM::Parameter::Value<String>",
+        "Description": "Bastion Host Key Name"
+      },
+      "SsmVpcCidrBlock": {
+        "Type": "AWS::SSM::Parameter::Value<String>",
+        "Description": "VPC CIDR Block"
+      },
+      "SsmRdsSubnets": {
+        "Type": "AWS::SSM::Parameter::Value<CommaDelimitedList>",
+        "Description": "RDS Subnets CIDR Blocks"
+      }
+    }
+  },
+  "region": "us-east-1",
+  "params": {},
+  "requestId": "73b0dda2-29cf-4d3e-85af-c7a698be58e0",
+  "accountId": "019181870962"
+}

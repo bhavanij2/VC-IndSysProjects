@@ -1,0 +1,565 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "CloudFormation template to create Amazon Aurora cluster"
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Description: 'Deployment Environment'
+    Type: String
+    AllowedValues:
+      - 'dev'
+      - 'it'
+      - 'prod'
+    ConstraintDescription: 'Must be either dev, it or prod.'
+  
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  KmsKey:
+    Type: AWS::SSM::Parameter::Value<String>  
+
+  VPCStackName:
+    Type: String
+    Description: The VPC stack name
+
+  DatabaseReplicas:
+    Type: Number
+    Description: The number of database read replicas to create.
+    AllowedValues:
+      - 0
+      - 1
+      - 2
+      - 3
+    Default: 1
+  
+  DatabaseInstanceType:
+    AllowedValues:
+      - db.t2.small
+      - db.t2.medium
+      - db.t3.small
+      - db.t3.medium
+      - db.r3.large
+      - db.r3.xlarge
+      - db.r3.2xlarge
+      - db.r3.4xlarge
+      - db.r4.large
+      - db.r4.xlarge
+      - db.r4.2xlarge
+      - db.r4.4xlarge
+      - db.r5.large
+      - db.r5.xlarge
+      - db.r5.2xlarge
+      - db.r5.4xlarge
+    Description: >-
+      The instance type to use for the database. Make sure that the instance type is compatible with the DB Engine. Aurora postgresql only support for db.r4.
+      For more info see the docs http://docs.amazonaws.cn/en_us/AmazonRDS/latest/AuroraUserGuide/Concepts.DBInstanceClass.html.
+    Type: String
+    Default: db.r4.large
+  
+  IamAuthentication:
+    Type: String
+    Description: >-
+      Set this to true to enable mapping of AWS Identity and Access Management (IAM) accounts to database accounts. 
+      For more information: https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/UsingWithRDS.IAMDBAuth.html
+    Default: false
+
+  DatabaseInstanceName:
+    Description: >-
+      A name for the DB instance. If you specify a name, AWS CloudFormation converts it to lowercase. If you don't specify a name, AWS CloudFormation generates a unique physical ID and uses that ID for the DB instance.
+    Type: String
+
+  DatabaseEngine:
+    Type: String
+    Description: >-
+      The version number of the database engine to use.
+      To list all of the available engine versions for aurora, use the following command:
+      aws rds describe-db-engine-versions --engine aurora --query "DBEngineVersions[].EngineVersion"
+      To list all of the available engine versions for aurora-postgresql, use the following command:
+      aws rds describe-db-engine-versions --engine aurora-postgresql --query "DBEngineVersions[].EngineVersion"
+    AllowedValues:
+      - 'aurora-postgresql9-6'
+      - 'aurora-postgresql10'
+      - 'aurora-postgresql11'
+      - 'aurora'
+    Default: aurora-postgresql10
+  
+  DatabaseNameCluster:
+    Description: "The database name needs to be given at Cluster for Aurora."
+    Type: String
+    ConstraintDescription: "Can contain only alphanumeric characters like 'SomeName9'."
+    AllowedPattern: "[a-zA-Z0-9]*"
+    MaxLength: "64"
+    MinLength: "3"
+  
+  DatabaseUsername:
+    Description: "The database admin account user name."
+    Type: String
+  
+  DatabasePassword:
+    Description: "The database admin account password."
+    Type: String
+    NoEcho: 'true'
+    MinLength: "8"
+  
+  ClusterSnapshotIdentifier:
+    Description: "Optional - Please specify DB snapshot name that you want to restore from."
+    Type: String
+    Default: ""
+
+  BackupRetentionPeriod:
+    Type: Number
+    Description: >-
+      'The number of days for which automated backups are retained. 
+      Setting this parameter to a positive number enables backups. 
+      Setting this parameter to 0 disables automated backups.'
+    Default: 1
+    MinValue: 0
+    MaxValue: 35
+
+  AWSBackupRetentionPeriod:
+    Type: String
+    Default: '90'
+    AllowedValues:
+      - '90'
+      - '120'
+    Description: >-
+      Set the number of days (90 or 120) you want AWS Backup retain your backup.
+
+  NotificationStackName:
+    Description: >-
+        The name of the stack that is exporting the Slack Notifier SNS Topic
+    Type: 'String'
+
+
+Conditions:
+  UseDBSnapshot:
+    Fn::Not:
+      - Fn::Equals:
+        - !Ref ClusterSnapshotIdentifier
+        - ""
+  UseReplica1: !Or
+    - !Equals
+      - !Ref DatabaseReplicas
+      - 1
+    - !Equals
+      - !Ref DatabaseReplicas
+      - 2
+    - !Equals
+      - !Ref DatabaseReplicas
+      - 3
+  UseReplica2: !Or
+    - !Equals
+      - !Ref DatabaseReplicas
+      - 2
+    - !Equals
+      - !Ref DatabaseReplicas
+      - 3
+  UseReplica3:
+    !Equals
+      - !Ref DatabaseReplicas
+      - 3
+
+Mappings:
+  EngineVersionMap:
+    aurora-postgresql9-6:
+      Version: 9.6.12
+    aurora-postgresql10:
+      Version: 11.6
+    aurora-postgresql11:
+      Version: 11.4
+    aurora:
+      Version: 5.6.10a
+
+  DBClusterParameterGroupMap:
+    aurora-postgresql11:
+      Group: default.aurora-postgresql11
+    aurora-postgresql9-6:
+      Group: default.aurora-postgresql9.6
+    postgresql10:
+      Group: default.postgres10
+    
+  EngineMap:
+    aurora-postgresql9-6:
+      Engine: aurora-postgresql
+    aurora-postgresql10:
+      Engine: aurora-postgresql
+    aurora-postgresql11:
+      Engine: aurora-postgresql
+    aurora:
+      Engine: aurora
+
+Resources:
+
+  RdsSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties: 
+      DBSubnetGroupDescription: Rds Aurora RDS Subnet Group
+      SubnetIds: 
+        - Fn::ImportValue: !Sub "${VPCStackName}-RdsSubnet1"
+        - Fn::ImportValue: !Sub "${VPCStackName}-RdsSubnet2"
+
+  DatabaseCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      BackupRetentionPeriod: !Ref BackupRetentionPeriod
+      DBSubnetGroupName: !Ref RdsSubnetGroup
+      EngineVersion:
+        Fn::FindInMap:
+          - EngineVersionMap
+          - !Ref DatabaseEngine
+          - Version
+      DBClusterParameterGroupName: default.aurora-postgresql11
+      MasterUsername :
+        Fn::If:
+          - UseDBSnapshot
+          - !Ref AWS::NoValue
+          - !Ref DatabaseUsername
+      MasterUserPassword:
+        Fn::If:
+          - UseDBSnapshot
+          - !Ref AWS::NoValue
+          - !Ref DatabasePassword
+      DatabaseName:
+        Fn::If:
+          - UseDBSnapshot
+          - !Ref AWS::NoValue
+          - !Ref DatabaseNameCluster
+      PreferredBackupWindow: "02:00-03:00"
+      PreferredMaintenanceWindow: "mon:03:00-mon:04:00"
+      Engine:
+        Fn::FindInMap:
+          - EngineMap
+          - !Ref DatabaseEngine
+          - Engine
+      SnapshotIdentifier:
+        Fn::If:
+          - UseDBSnapshot
+          - !Ref ClusterSnapshotIdentifier
+          - !Ref AWS::NoValue
+      VpcSecurityGroupIds:
+        - Fn::ImportValue: !Sub "${VPCStackName}-VcisRdsSecurityGroup"
+      StorageEncrypted: "true"
+      EnableIAMDatabaseAuthentication: !Ref IamAuthentication
+      KmsKeyId:
+        Fn::If:
+           - UseDBSnapshot
+           - !Ref AWS::NoValue
+           - !Ref KmsKey
+      Tags:
+        - Key: mon:backup-plan
+          Value: !Sub 'rds-retain-${AWSBackupRetentionPeriod}'
+
+  DatabasePrimaryInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine:
+        Fn::FindInMap:
+          - EngineMap
+          - !Ref DatabaseEngine
+          - Engine
+      DBClusterIdentifier: !Ref DatabaseCluster
+      DBInstanceClass: !Ref DatabaseInstanceType
+      DBInstanceIdentifier: !Ref DatabaseInstanceName
+      DBSubnetGroupName: !Ref RdsSubnetGroup
+
+  DatabaseReplicaInstance1:
+    Type: AWS::RDS::DBInstance
+    Condition: UseReplica1
+    Properties:
+      Engine:
+        Fn::FindInMap:
+          - EngineMap
+          - !Ref DatabaseEngine
+          - Engine
+      DBClusterIdentifier: !Ref DatabaseCluster
+      DBInstanceClass: !Ref DatabaseInstanceType
+      DBInstanceIdentifier: !Join
+          - ""
+          - - !Ref DatabaseInstanceName
+            - "-1"
+      DBSubnetGroupName: !Ref RdsSubnetGroup      
+
+  DatabaseReplicaInstance2:
+    Type: AWS::RDS::DBInstance
+    Condition: UseReplica2
+    Properties:
+      Engine:
+        Fn::FindInMap:
+          - EngineMap
+          - !Ref DatabaseEngine
+          - Engine
+      DBClusterIdentifier: !Ref DatabaseCluster
+      DBInstanceClass: !Ref DatabaseInstanceType
+      DBInstanceIdentifier: !Join
+          - ""
+          - - !Ref DatabaseInstanceName
+            - "-2"
+      DBSubnetGroupName: !Ref RdsSubnetGroup
+
+  DatabaseReplicaInstance3:
+    Type: AWS::RDS::DBInstance
+    Condition: UseReplica3
+    Properties:
+      Engine:
+        Fn::FindInMap:
+          - EngineMap
+          - !Ref DatabaseEngine
+          - Engine
+      DBClusterIdentifier: !Ref DatabaseCluster
+      DBInstanceClass: !Ref DatabaseInstanceType
+      DBInstanceIdentifier: !Join
+          - ""
+          - - !Ref DatabaseInstanceName
+            - "-3"
+      DBSubnetGroupName: !Ref RdsSubnetGroup
+
+  DatabaseWriterCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${NotificationStackName}-SNSTopicArn"
+      AlarmDescription: "Writer database CPU utilization is over 80%."
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref DatabaseCluster
+        - Name: Role
+          Value: WRITER
+      EvaluationPeriods: 2
+      MetricName: CPUUtilization
+      Namespace: AWS/RDS
+      Period: 300
+      Statistic: Average
+      Threshold: 80
+      Unit: Percent
+
+  DatabaseWriterMemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${NotificationStackName}-SNSTopicArn"
+      AlarmDescription: "Writer database freeable memory is under 700MB."
+      ComparisonOperator: LessThanOrEqualToThreshold
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref DatabaseCluster
+        - Name: Role
+          Value: WRITER
+      EvaluationPeriods: 2
+      MetricName: FreeableMemory
+      Namespace: AWS/RDS
+      Period: 300
+      Statistic: Average
+      Threshold: 700000000
+      Unit: Bytes
+
+  DatabaseWriterConnectionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${NotificationStackName}-SNSTopicArn"
+      AlarmDescription: "The number of writer database connections in use is over 80%."
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref DatabaseCluster
+        - Name: Role
+          Value: WRITER
+      EvaluationPeriods: 2
+      MetricName: DatabaseConnections
+      Namespace: AWS/RDS
+      Period: 300
+      Statistic: Average
+      Threshold: 80
+      Unit: Percent      
+
+  DatabaseReaderCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${NotificationStackName}-SNSTopicArn"
+      AlarmDescription: "Reader database CPU utilization is over 80%."
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref DatabaseCluster
+        - Name: Role
+          Value: READER
+      EvaluationPeriods: 2
+      MetricName: CPUUtilization
+      Namespace: AWS/RDS
+      Period: 300
+      Statistic: Average
+      Threshold: 80
+      Unit: Percent
+
+  DatabaseReaderMemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${NotificationStackName}-SNSTopicArn"
+      AlarmDescription: "Reader database freeable memory is under 700MB."
+      ComparisonOperator: LessThanOrEqualToThreshold
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref DatabaseCluster
+        - Name: Role
+          Value: READER
+      EvaluationPeriods: 2
+      MetricName: FreeableMemory
+      Namespace: AWS/RDS
+      Period: 300
+      Statistic: Average
+      Threshold: 700000000
+      Unit: Bytes
+
+  DatabaseReaderConnectionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${NotificationStackName}-SNSTopicArn"
+      AlarmDescription: "The number of database reader connections in use is over 80%."
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref DatabaseCluster
+        - Name: Role
+          Value: READER
+      EvaluationPeriods: 2
+      MetricName: DatabaseConnections
+      Namespace: AWS/RDS
+      Period: 300
+      Statistic: Average
+      Threshold: 80
+      Unit: Percent      
+
+  DatabaseReplicationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${NotificationStackName}-SNSTopicArn"
+      AlarmDescription: "Aurora replication latency is over 200ms."
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref DatabaseCluster
+      EvaluationPeriods: 2
+      MetricName: AuroraReplicaLag
+      Namespace: AWS/RDS
+      Period: 300
+      Statistic: Average
+      Threshold: 200
+      Unit: Milliseconds
+
+  DatabaseFreeStorageSpaceAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${NotificationStackName}-SNSTopicArn"
+      AlarmDescription: "The amount of available storage space"
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref DatabaseCluster
+      EvaluationPeriods: 2
+      MetricName: FreeStorageSpace
+      Namespace: AWS/RDS
+      Period: 300
+      Statistic: Average
+      Threshold: 15
+      Unit: Bytes
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Database Configuration and Tags"
+        Parameters:
+          - DatabaseInstanceType
+          - DatabaseEngine
+          - DatabaseInstanceName
+          - DatabaseReplicas
+          - DatabaseNameCluster
+          - DatabaseUsername
+          - DatabasePassword
+          - DatabaseSubnets
+          - ClusterSnapshotIdentifier
+          - CostCenterTag
+          - ProjectTag
+          - OwnerTag
+          - Environment
+          - DataClassificationTag
+          - RegulatedTag
+          - KmsKey
+          - IamAuthentication
+      - Label:
+          default: Backup
+        Parameters:
+          - AWSBackupRetentionPeriod
+          - BackupRetentionPeriod
+    ParameterLabels:
+      DatabaseInstanceType:
+        default: "Database Instance Type"
+      DatabaseReplicas:
+        default: "Number of Database Replicas"
+      DatabasePassword:
+        default: "Database Password"
+      DatabaseSubnets:
+        default: "Database Subnets"
+      DatabaseUsername:
+        default: "Database Username"
+      DatabaseEngine:
+        default: "Database Engine"
+      AWSBackupRetentionPeriod:
+        default: AWS Backup retention period
+      BackupRetentionPeriod:
+        default: Automatic Aurora backup retention period
+
+Outputs:
+  DatabaseClusterIdentifierOutput:
+    Description: Database Cluster Identifier
+    Value: !Ref DatabaseCluster
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseClusterIdentifier'
+  DatabaseWriterCPUAlarmOutput:
+    Description: DatabaseWriterCPUAlarm's arn
+    Value: !GetAtt DatabaseWriterCPUAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseWriterCPUAlarm'
+  DatabaseWriterMemoryAlarmOutput:
+    Description: DatabaseWriterMemoryAlarm's arn
+    Value: !GetAtt DatabaseWriterMemoryAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseWriterMemoryAlarm'
+  DatabaseWriterConnectionsAlarmOutput:
+    Description: DatabaseWriterConnectionsAlarm's arn
+    Value: !GetAtt DatabaseWriterConnectionsAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseWriterConnectionsAlarm'            
+  DatabaseReaderCPUAlarmOutput:
+    Description: DatabaseReaderCPUAlarm's arn
+    Value: !GetAtt DatabaseReaderCPUAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseReaderCPUAlarm'
+  DatabaseReaderMemoryAlarmOutput:
+    Description: DatabaseReaderMemoryAlarm's arn
+    Value: !GetAtt DatabaseReaderMemoryAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseReaderMemoryAlarm'
+  DatabaseReaderConnectionsAlarmOutput:
+    Description: DatabaseReaderConnectionsAlarm's arn
+    Value: !GetAtt DatabaseReaderConnectionsAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseReaderConnectionsAlarm'
+  DatabaseReplicationAlarmOutput:
+    Description: DatabaseReplicationAlarm's arn
+    Value: !GetAtt DatabaseReplicationAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseReplicationAlarm'
+  DatabaseFreeStorageSpaceAlarmOutput:
+    Description: DatabaseFreeStorageSpaceAlarm's arn
+    Value: !GetAtt DatabaseFreeStorageSpaceAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseFreeStorageSpaceAlarm'

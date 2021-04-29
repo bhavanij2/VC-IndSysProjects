@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: VCIS CloudFormation Macro CommonTags
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  # IAM Roles and Policies
+  VcisCommonTagsMacroRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement: 
+          - 
+            Effect: Allow
+            Principal: 
+              Service: 
+                - lambda.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+      Path: /
+
+  VcisCommonTagsMacroRoleCloudWatchPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: VcisCommonTagsMacroRoleCloudWatchPolicy
+      PolicyDocument: 
+        Version: 2012-10-17
+        Statement: 
+          - 
+            Effect: Allow
+            Action: 
+              - logs:*
+            Resource: 'arn:aws:logs:*:*:*'
+      Roles: 
+        - !Ref VcisCommonTagsMacroRole
+
+  VcisCommonTagsMacroRoleSSMPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: VcisCommonTagsMacroRoleSSMPolicy
+      PolicyDocument: 
+        Version: 2012-10-17
+        Statement: 
+          - 
+            Effect: Allow
+            Action: 
+              - ssm:GetParameters
+            Resource: !Sub "arn:aws:ssm:*:${AWS::AccountId}:parameter/vcis/*/infra/tags/*"
+      Roles: 
+        - !Ref VcisCommonTagsMacroRole
+
+  VcisCommonTagsMacroLambdaFunctionPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: VcisCommonTagsMacroLambdaFunctionPolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - lambda:GetFunction
+              - lambda:CreateFunction
+            Resource: !GetAtt VcisCommonTagsMacroLambdaFunction.Arn
+      Roles:
+        - !Ref VcisCommonTagsMacroRole
+  
+  # CloudFormation Macro
+  VcisCommonTagsMacroLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs12.x
+      CodeUri: ./lambda
+      Handler: index.handler
+      Role: !GetAtt VcisCommonTagsMacroRole.Arn
+
+  VcisCommonTagsMacro:
+    Type: AWS::CloudFormation::Macro
+    Properties:
+      Name: VcisCommonTagsMacro
+      FunctionName: !GetAtt VcisCommonTagsMacroLambdaFunction.Arn

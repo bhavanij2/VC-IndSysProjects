@@ -1,0 +1,271 @@
+Resources:
+  vcislambdarole7523CD6A:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                Fn::Join:
+                  - ""
+                  - - lambda.
+                    - Ref: AWS::URLSuffix
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+        - arn:aws:iam::aws:policy/AmazonAPIGatewayInvokeFullAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      RoleName: vcis-iam-stack-non-prod/vcis-lambda-role
+    Metadata:
+      aws:cdk:path: vcis-iam-stack-non-prod/vcis-lambda-role/Resource
+  CloudWatchBasicLoggingPolicy63B184FA:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - logs:PutRetentionPolicy
+              - logs:DescribeLogStreams
+            Effect: Allow
+            Resource: arn:aws:logs:us-east-1:*:vcis*
+        Version: "2012-10-17"
+      PolicyName: vcis-iam-stack-non-prod/CloudWatchBasicLoggingPolicy
+      Roles:
+        - Ref: vcislambdarole7523CD6A
+        - Ref: vcisapigwrole1DB87547
+    Metadata:
+      aws:cdk:path: vcis-iam-stack-non-prod/CloudWatchBasicLoggingPolicy/Resource
+  LambdaInvokePolicy22A92CE2:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: lambda:InvokeFunction
+            Effect: Allow
+            Resource: arn:aws:lambda:us-east-1:*:function:vcis*
+        Version: "2012-10-17"
+      PolicyName: vcis-iam-stack-non-prod/LambdaInvokePolicy
+      Roles:
+        - Ref: vcislambdarole7523CD6A
+        - Ref: vcisapigwrole1DB87547
+    Metadata:
+      aws:cdk:path: vcis-iam-stack-non-prod/LambdaInvokePolicy/Resource
+  SqsReceiveMessage31FEC2E9:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+            Effect: Allow
+            Resource: arn:aws:sqs:us-east-1:*:vcis*
+        Version: "2012-10-17"
+      PolicyName: vcis-iam-stack-non-prod/SqsReceiveMessage
+      Roles:
+        - Ref: vcislambdarole7523CD6A
+    Metadata:
+      aws:cdk:path: vcis-iam-stack-non-prod/SqsReceiveMessage/Resource
+  SqsProduceMessage5F410848:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - sqs:SendMessage
+              - sqs:SendMessageBatch
+            Effect: Allow
+            Resource: arn:aws:sqs:us-east-1:*:vcis*
+        Version: "2012-10-17"
+      PolicyName: vcis-iam-stack-non-prod/SqsProduceMessage
+      Roles:
+        - Ref: vcislambdarole7523CD6A
+        - Ref: vcisapigwrole1DB87547
+    Metadata:
+      aws:cdk:path: vcis-iam-stack-non-prod/SqsProduceMessage/Resource
+  KinesisProduceMessagePolicyBE3BD3CA:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - kinesis:PutRecords
+              - kinesis:PutRecord
+            Effect: Allow
+            Resource: arn:aws:kinesis:us-east-1:*:stream/vcis*
+        Version: "2012-10-17"
+      PolicyName: vcis-iam-stack-non-prod/KinesisProduceMessagePolicy
+      Roles:
+        - Ref: vcislambdarole7523CD6A
+        - Ref: vcisapigwrole1DB87547
+    Metadata:
+      aws:cdk:path: vcis-iam-stack-non-prod/KinesisProduceMessagePolicy/Resource
+  KinesisReceiveMessagePolicy12E98747:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - kinesis:DescribeStream
+              - kinesis:GetShardIterator
+              - kinesis:GetRecords
+              - kinesis:ListStreams
+            Effect: Allow
+            Resource: arn:aws:kinesis:us-east-1:*:stream/vcis*
+        Version: "2012-10-17"
+      PolicyName: vcis-iam-stack-non-prod/KinesisReceiveMessagePolicy
+      Roles:
+        - Ref: vcislambdarole7523CD6A
+    Metadata:
+      aws:cdk:path: vcis-iam-stack-non-prod/KinesisReceiveMessagePolicy/Resource
+  SnsPublishMessage2B6D02C1:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: sns:Publish
+            Effect: Allow
+            Resource: arn:aws:sns:us-east-1:*:vcis*
+        Version: "2012-10-17"
+      PolicyName: vcis-iam-stack-non-prod/SnsPublishMessage
+      Roles:
+        - Ref: vcislambdarole7523CD6A
+    Metadata:
+      aws:cdk:path: vcis-iam-stack-non-prod/SnsPublishMessage/Resource
+  S3ObjectCrud82FEFF64:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - s3:AbortMultipartUpload
+              - s3:DeleteObject
+              - s3:DeleteObjectVersion
+              - s3:GetObject
+              - s3:GetObjectAcl
+              - s3:GetObjectVersion
+              - s3:GetObjectVersionAcl
+              - s3:PutObject
+              - s3:PutObjectAcl
+              - s3:PutObjectAclVersion
+            Effect: Allow
+            Resource: arn:aws:s3:::vcis*
+        Version: "2012-10-17"
+      PolicyName: vcis-iam-stack-non-prod/S3ObjectCrud
+      Roles:
+        - Ref: vcislambdarole7523CD6A
+    Metadata:
+      aws:cdk:path: vcis-iam-stack-non-prod/S3ObjectCrud/Resource
+  KmsDecrypt741D0254:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: kms:Decrypt
+            Effect: Allow
+            Resource: arn:aws:kms:us-east-1:*:key/vcis*
+        Version: "2012-10-17"
+      PolicyName: vcis-iam-stack-non-prod/KmsDecrypt
+      Roles:
+        - Ref: vcislambdarole7523CD6A
+    Metadata:
+      aws:cdk:path: vcis-iam-stack-non-prod/KmsDecrypt/Resource
+  SecretsManagerReadValuePolicy3A157B91:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: secretsmanager:GetSecretValue
+            Effect: Allow
+            Resource: arn:aws:secretsmanager:us-east1:*:secret:vcis*
+        Version: "2012-10-17"
+      PolicyName: vcis-iam-stack-non-prod/SecretsManagerReadValuePolicy
+      Roles:
+        - Ref: vcislambdarole7523CD6A
+    Metadata:
+      aws:cdk:path: vcis-iam-stack-non-prod/SecretsManagerReadValuePolicy/Resource
+  vcisapigwrole1DB87547:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                Fn::Join:
+                  - ""
+                  - - apigateway.
+                    - Ref: AWS::URLSuffix
+        Version: "2012-10-17"
+      RoleName: vcis-iam-stack-non-prod/vcis-apigw-role
+    Metadata:
+      aws:cdk:path: vcis-iam-stack-non-prod/vcis-apigw-role/Resource
+  vcisdeveloperrole1F4EED22:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRoleWithSAML
+            Effect: Allow
+            Principal:
+              Federated:
+                Fn::Join:
+                  - ""
+                  - - "arn:aws:iam::"
+                    - Ref: AWS::AccountId
+                    - :saml-provider/PingOne
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/ReadOnlyAccess
+      RoleName: vcis-iam-stack-non-prod/vcis-developer-role
+    Metadata:
+      aws:cdk:path: vcis-iam-stack-non-prod/vcis-developer-role/Resource
+  vcissecretrotationrole341E2B2D:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                Fn::Join:
+                  - ""
+                  - - lambda.
+                    - Ref: AWS::URLSuffix
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      RoleName: vcis-iam-stack-non-prod/vcis-secret-rotation-role
+    Metadata:
+      aws:cdk:path: vcis-iam-stack-non-prod/vcis-secret-rotation-role/Resource
+  SecretsManagerRotateSecretPolicyDCBD9ED4:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - secretsmanager:GetRandomPassword
+              - secretsmanager:GetSecretValue
+              - secretsmanager:DescribeSecret
+              - secretsmanager:PutSecretValue
+              - secretsmanager:UpdateSecretVersionStage
+            Effect: Allow
+            Resource: arn:aws:secretsmanager:us-east1:*:secret:vcis*
+        Version: "2012-10-17"
+      PolicyName: vcis-iam-stack-non-prod/SecretsManagerRotateSecretPolicy
+      Roles:
+        - Ref: vcissecretrotationrole341E2B2D
+    Metadata:
+      aws:cdk:path: vcis-iam-stack-non-prod/SecretsManagerRotateSecretPolicy/Resource
+  CDKMetadata:
+    Type: AWS::CDK::Metadata
+    Properties:
+      Modules: aws-cdk=0.24.1,@aws-cdk/aws-iam=0.29.0,@aws-cdk/cdk=0.29.0,@aws-cdk/cx-api=0.29.0,@aws-cdk/region-info=0.29.0,jsii-runtime=node.js/v10.15.0

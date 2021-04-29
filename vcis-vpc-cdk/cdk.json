@@ -1,0 +1,35 @@
+{
+  "app": "node bin/vcis-vpc-app.js",
+  "context": {
+    "InputParameters": {
+      "generic": {
+        "inputs": {
+          "vpcCidrList": "ssm:/vcis/{ENV}/infra/vpc/input/vpcCidrList:1",
+          "primaryCentralBastionIP": "ssm:/vcis/{ENV}/infra/vpc/input/primaryCentralBastionIP:1",
+          "secondaryCentralBastionIP": "ssm:/vcis/{ENV}/infra/vpc/input/secondaryCentralBastionIP:1",
+          "bastionHostKeyName": "ssm:/vcis/{ENV}/infra/vpc/input/bastionHostKeyName:1",
+          "bastionInstanceType": "ssm:/vcis/{ENV}/infra/vpc/input/bastionInstanceType:1"
+        },
+        "outputs": {
+          "vpcIdParamStoreOutput": "/vcis/{ENV}/infra/vpc/output/vpcId"
+        }
+      }
+    },
+    "availability-zones:account=019181870962:region=us-east-1": [
+      "us-east-1a",
+      "us-east-1b",
+      "us-east-1c",
+      "us-east-1d",
+      "us-east-1e",
+      "us-east-1f"
+    ],
+    "availability-zones:account=578248469025:region=us-east-1": [
+      "us-east-1a",
+      "us-east-1b",
+      "us-east-1c",
+      "us-east-1d",
+      "us-east-1e",
+      "us-east-1f"
+    ]
+  }
+}

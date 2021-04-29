@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VCIS S3 Bucket Alarm'
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: The bucket name
+  Env:
+    Type: String
+    AllowedValues:
+      - prod
+      - dev
+      - it
+      - poc
+    ConstraintDescription: Environment values must be non-prod or prod
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+  4xxErrorsThreshold:
+    Type: Number
+    Description: The value to compare with the specified statistic
+    MinValue: 0
+  5xxErrorsThreshold:
+    Type: Number
+    Description: The value to compare with the specified statistic
+    MinValue: 0
+  Period:
+    Type: Number
+    Description: The period, in seconds, over which the statistic is applied
+    Default: 300
+  LambdaSubscription:
+    Type: String
+    Description: An AWS Lambda function that can receive notifications from Amazon SN
+
+Resources:
+  S3AlarmNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${QueueName}-${Env}-AlarmNotificationTopic'
+  MySubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref LambdaSubscription
+      Protocol: lambda
+      TopicArn:
+        Ref: S3AlarmNotificationTopic
+
+  4xxErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Ref: S3AlarmNotificationTopic
+      AlarmDescription: !Sub '${BucketName} The number of HTTP 4xx client error status code requests made to an Amazon S3 bucket with a value of either 0 or 1'
+      AlarmName: !Sub '${BucketName}-${Env}-4xxErrors'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: '4xxErrors'
+      Namespace: 'AWS/S3'
+      Period:
+        !Ref Period
+      Statistic: Average
+      Threshold:
+        !Ref 4xxErrorsThreshold
+      Dimensions:
+        [
+         {
+            "Name": "BucketName",
+            "Value": !Ref BucketName
+         }
+        ]
+
+  5xxErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Ref: S3AlarmNotificationTopic
+      AlarmDescription: !Sub '${BucketName} The number of HTTP 5xx server error status code requests made to an Amazon S3 bucket with a value of either 0 or 1'
+      AlarmName: !Sub '${BucketName}-${Env}-5xxErrors'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: '5xxErrors'
+      Namespace: 'AWS/S3'
+      Period:
+        !Ref Period
+      Statistic: Average
+      Threshold:
+        !Ref 5xxErrorsThreshold
+      Dimensions:
+        [
+         {
+            "Name": "BucketName",
+            "Value": !Ref BucketName
+         }
+        ]
+
+  TotalRequestLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Ref: S3AlarmNotificationTopic
+      AlarmDescription: !Sub '${BucketName} The elapsed per-request time from the first byte received to the last byte sent to an Amazon S3 bucket. This includes the time taken to receive the request body and send the response body, which is not included in FirstByteLatency'
+      AlarmName: !Sub '${BucketName}-${Env}-TotalRequestLatency'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: 'TotalRequestLatency'
+      Namespace: 'AWS/S3'
+      Period:
+        !Ref Period
+      Statistic: Average
+      Threshold:
+        !Ref TotalRequestLatencyThreshold
+      Dimensions:
+        [
+         {
+            "Name": "BucketName",
+            "Value": !Ref BucketName
+         }
+        ]

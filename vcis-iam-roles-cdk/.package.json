@@ -1,0 +1,30 @@
+{
+  "name": "@monsantoit/vcis-iam-roles-cdk",
+  "version": "1.3.0",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk"
+  },
+  "devDependencies": {
+    "@types/node": "^8.9.4",
+    "typescript": "^3.1.2",
+    "aws-cdk": "latest"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-iam": "latest",
+    "@aws-cdk/aws-lambda": "latest",
+    "@aws-cdk/cdk": "latest",
+    "@monsantoit/vcis-cdk-utils": "latest",
+    "source-map-support": "^0.5.12"
+  },
+  "peerDependencies": {
+    "@aws-cdk/cdk": "latest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.platforms.engineering:POD-Inc/vcis-iam-roles-cdk.git"
+  }
+}

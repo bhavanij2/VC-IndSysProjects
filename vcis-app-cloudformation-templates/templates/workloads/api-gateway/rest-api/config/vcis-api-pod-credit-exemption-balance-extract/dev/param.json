@@ -1,0 +1,22 @@
+[
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/dev/infra/tags/project-module-pod"
+  },
+  {
+    "ParameterKey": "RestApiName",
+    "ParameterValue": "vcis-pod-credit-exemption-balance-extract"
+  },
+  {
+    "ParameterKey": "RestApiDescription",
+    "ParameterValue": "POD - Credit Exemption Balance and Extract API"
+  },
+  {
+    "ParameterKey": "LambdaAuthorizerStackName",
+    "ParameterValue": "vcis-app-pod-ping-authorizer-dev"
+  }
+]

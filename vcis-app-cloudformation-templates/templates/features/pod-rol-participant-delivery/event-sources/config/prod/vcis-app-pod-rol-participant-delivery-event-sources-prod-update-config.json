@@ -1,0 +1,10 @@
+{
+  "Parameters": {
+    "Env": "prod",
+    "ProjectModuleTag": "/vcis/prod/infra/tags/project-module-pod",
+    "KMS": "/vcis/prod/app/kms/sharedAccount",
+    "CustomTags": "Key=mon:feature,Value=pod-rol-participant-delivery,Key=mon:team,Value=stark,Key=mon:application,Value=Industry System,Key=mon:module,Value=IS",
+    "PodParticipantDeliveryBulkSQSName": "vcis-app-pod-participant-delivery-bulk-tmp",
+    "PodParticipantDeliveriesUpdatedTopicSNSName": "vcis-app-pod-participant-deliveries-updated-topic-tmp"
+  }
+}

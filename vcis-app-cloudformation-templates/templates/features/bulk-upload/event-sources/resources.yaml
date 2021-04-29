@@ -1,0 +1,266 @@
+Transform: [VcisCommonTagsMacro]
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+  KMS:
+      Description: "SSM Parameter Name containing KMS Arn for decrypting keys"
+      Type: AWS::SSM::Parameter::Value<String>
+  ProjectModuleTag:
+      Type: AWS::SSM::Parameter::Value<String>
+      Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+  BulkSplitRequestSQSName:
+    Type: String
+    Description: BulkSplitRequestSQSName description
+  BulkItemPersisterSQSName:
+    Type: String
+    Description: BulkItemPersisterSQSName description
+  BulkToSplitSQSName:
+    Type: String
+    Description: BulkToSplitSQSName description
+  BulkFinishedTopicSNSName:
+    Type: String
+    Description: BulkFinishedTopicSNSName description
+  BulkSplitedTopicSNSName:
+    Type: String
+    Description: BulkSplitedTopicSNSName description
+
+Resources:
+  ### Queues
+  BulkSplitRequestSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 60
+      QueueName: !Join
+        - ''
+        - - !Ref BulkSplitRequestSQSName
+          - '-'
+          - !Ref Env
+
+  BulkSplitRequestSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt BulkSplitRequestSQS.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt BulkSplitRequestSQS.Arn
+      Queues:
+        - !Ref BulkSplitRequestSQS
+    DependsOn:
+      - BulkSplitRequestSQS
+
+  BulkItemPersisterSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 60
+      QueueName: !Join
+        - ''
+        - - !Ref BulkItemPersisterSQSName
+          - '-'
+          - !Ref Env
+
+  BulkItemPersisterSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt BulkItemPersisterSQS.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt BulkItemPersisterSQS.Arn
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt BulkItemPersisterSQS.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn:
+                  - !Sub 'arn:aws:sns:us-east-1:578248469025:vcis-app-bulk-splited-topic-${Env}'
+      Queues:
+        - !Ref BulkItemPersisterSQS
+    DependsOn:
+      - BulkItemPersisterSQS
+
+  BulkToSplitSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 60
+      QueueName: !Join
+        - ''
+        - - !Ref BulkToSplitSQSName
+          - '-'
+          - !Ref Env
+
+  BulkToSplitSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt BulkToSplitSQS.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt BulkToSplitSQS.Arn
+      Queues:
+        - !Ref BulkToSplitSQS
+    DependsOn:
+      - BulkToSplitSQS
+
+
+  ### SNS Topics
+  BulkFinishedTopicSNS:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: 'brazil-value-capture-bulk-finished-topic-dev'
+      TopicName: !Join
+        - ''
+        - - !Ref BulkFinishedTopicSNSName
+          - '-'
+          - !Ref Env
+      Subscription:
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-ch-exception-process-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-ch-process-${Env}"
+          Protocol: sqs
+
+  BulkFinishedTopicSNSPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2008-10-17"
+        Id: "__default_policy_ID"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - SNS:GetTopicAttributes
+              - SNS:SetTopicAttributes
+              - SNS:AddPermission
+              - SNS:RemovePermission
+              - SNS:DeleteTopic
+              - SNS:Subscribe
+              - SNS:ListSubscriptionsByTopic
+              - SNS:Publish
+              - SNS:Receive
+            Resource: !Join
+              - ''
+              - - !Ref BulkFinishedTopicSNS
+                - '-'
+                - !Ref Env
+            Condition:
+              StringEquals:
+                AWS:SourceOwner: 578248469025
+      Topics:
+        - Ref: BulkFinishedTopicSNS
+    DependsOn:
+      - BulkFinishedTopicSNS
+  BulkSplitedTopicSNS:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: ''
+      TopicName: !Join
+        - ''
+        - - !Ref BulkSplitedTopicSNSName
+          - '-'
+          - !Ref Env
+      Subscription:
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-bulk-item-persister-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-ch-data-retriever-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-ch-exception-data-retriever-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-ce-mg-data-retriever-${Env}"
+          Protocol: sqs
+
+  BulkSplitedTopicSNSPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2008-10-17"
+        Id: "__default_policy_ID"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - SNS:GetTopicAttributes
+              - SNS:SetTopicAttributes
+              - SNS:AddPermission
+              - SNS:RemovePermission
+              - SNS:DeleteTopic
+              - SNS:Subscribe
+              - SNS:ListSubscriptionsByTopic
+              - SNS:Publish
+              - SNS:Receive
+            Resource: !Join
+              - ''
+              - - !Ref BulkSplitedTopicSNS
+                - '-'
+                - !Ref Env
+            Condition:
+              StringEquals:
+                AWS:SourceOwner: 578248469025
+      Topics:
+        - Ref: BulkSplitedTopicSNS
+    DependsOn:
+      - BulkSplitedTopicSNS
+
+Outputs:
+  BulkSplitRequestSQSOutput:
+    Description: "BulkSplitRequestSQS"
+    Value: !GetAtt BulkSplitRequestSQS.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-BulkSplitRequestSQS'
+  BulkItemPersisterSQSOutput:
+    Description: "BulkItemPersisterSQS"
+    Value: !GetAtt BulkItemPersisterSQS.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-BulkItemPersisterSQS'
+  BulkToSplitSQSOutput:
+    Description: "BulkToSplitSQS"
+    Value: !GetAtt BulkToSplitSQS.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-BulkToSplitSQS'
+  BulkFinishedTopicSNSOutput:
+    Description: "BulkFinishedTopicSNS"
+    Value: !Ref BulkFinishedTopicSNS
+    Export:
+      Name: !Sub '${AWS::StackName}-BulkFinishedTopicSNS'
+  BulkSplitedTopicSNSOutput:
+    Description: "BulkSplitedTopicSNS"
+    Value: !Ref BulkSplitedTopicSNS
+    Export:
+      Name: !Sub '${AWS::StackName}-BulkSplitedTopicSNS'

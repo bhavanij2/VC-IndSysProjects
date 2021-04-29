@@ -1,0 +1,12 @@
+{
+  "non-prod": {
+    "dependencies": {
+      "@monsantoit/vcis-cdk-utils": "non-prod"
+    }
+  },
+  "prod": {
+    "dependencies": {
+      "@monsantoit/vcis-cdk-utils": "latest"
+    }
+  }
+}

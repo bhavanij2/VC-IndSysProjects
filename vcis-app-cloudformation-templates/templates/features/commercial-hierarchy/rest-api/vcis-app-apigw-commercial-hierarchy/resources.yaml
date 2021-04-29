@@ -1,0 +1,656 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VCIS API Gateway
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+
+  RestApiName:
+    Type: String
+    Description: 'The API Name (eg: vcis-pod-credit-exemption-balance)'
+
+  RestApiDescription:
+    Type: String
+    Description: Rest API Description
+
+  StageName:
+    Type: String
+    Description: The name of the API Stage. Default is 'release' stage
+    Default: 'release'
+
+  RestApiCustomDomainName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Rest API Custom Domain Name. Default value is 'api.pod-np.its-plus.com' (NonProd) and 'api.pod.its-plus.com' (Prod)
+
+  LambdaAuthorizerStackName:
+    Type: String
+    Description: Stack that exports Lambda Authorizer ARN.
+
+  MinimumCompressionSize:
+    Type: Number
+    Default: 0
+    Description: 'Compression or decompression is not applied on the payload if the payload size is smaller than this value. Setting it to zero allows compression for any payload size.'
+
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+
+Mappings:
+  EnvStageVarMapping:
+    poc:
+      EnvStageVar: 'DEV'
+    dev:
+      EnvStageVar: 'DEV'
+    it:
+      EnvStageVar: 'TEST'
+    prod:
+      EnvStageVar: 'PROD'
+
+Resources:
+  RestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${RestApiName}-${Env}'
+      Description: !Ref RestApiDescription
+      ApiKeySourceType: HEADER
+      MinimumCompressionSize: !Ref MinimumCompressionSize
+      EndpointConfiguration:
+        Types:
+          - EDGE
+
+    ## Lambda Authorizer
+  ApiGatewayLambdaAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    DependsOn: RestApi
+    Properties:
+      Name: !Sub 'vcis-pod-ping-authorizer-${Env}'
+      Type: 'REQUEST'
+      AuthorizerResultTtlInSeconds: 0
+      AuthorizerUri: !Join
+        - ''
+        - - 'arn:aws:apigateway:'
+          - !Ref 'AWS::Region'
+          - ':lambda:path/2015-03-31/functions/'
+          - Fn::ImportValue: !Sub "${LambdaAuthorizerStackName}-PodPingAuthorizer"
+          - '/invocations'
+      IdentitySource: 'method.request.header.Authorization'
+      RestApiId: !Ref RestApi
+
+  Deployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+    - MasterdataPath
+    - MasterdatacommercialhierarchyPath
+    - MasterdatacommercialhierarchydocPath
+    - MasterdatacommercialhierarchydocswaggerjsonPath
+    - MasterdatacommercialhierarchyregionsPath
+    - MasterdatacommercialhierarchyregionsdistrictsPath
+    - MasterdatacommercialhierarchyregionsregionCodePath
+    - MasterdatacommercialhierarchyregionsregionCodedistrictsPath
+    - MasterdatacommercialhierarchychIdPath
+    - MasterdatacommercialhierarchychIdapprovePath
+    - MasterdatacommercialhierarchychIdexceptionPath
+    - MasterdatacommercialhierarchychIdexceptionidPath
+    - MasterdatacommercialhierarchychIdexceptionidapprovePath
+    - MasterdatacommercialhierarchychIdexceptionidrejectPath
+    - MasterdatacommercialhierarchychIdrejectPath
+    - MasterdatacommercialhierarchyOptionsMethod
+    - MasterdatacommercialhierarchydocswaggerjsonOptionsMethod
+    - MasterdatacommercialhierarchyregionsOptionsMethod
+    - MasterdatacommercialhierarchyregionsdistrictsOptionsMethod
+    - MasterdatacommercialhierarchyregionsregionCodedistrictsOptionsMethod
+    - MasterdatacommercialhierarchychIdOptionsMethod
+    - MasterdatacommercialhierarchychIdapproveOptionsMethod
+    - MasterdatacommercialhierarchychIdexceptionOptionsMethod
+    - MasterdatacommercialhierarchychIdexceptionidapproveOptionsMethod
+    - MasterdatacommercialhierarchychIdexceptionidrejectOptionsMethod
+    - MasterdatacommercialhierarchychIdrejectOptionsMethod
+    Properties:
+      Description: API Deployment
+      RestApiId: !Ref RestApi
+
+  Stage:
+    Type: AWS::ApiGateway::Stage
+    DependsOn: Deployment
+    Properties:
+      RestApiId: !Ref RestApi
+      DeploymentId: !Ref Deployment
+      StageName: !Ref StageName
+      Variables:
+        environment: !FindInMap [EnvStageVarMapping, !Ref Env, EnvStageVar]
+
+  ApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    DependsOn: Stage
+    Properties:
+      DomainName: !Ref RestApiCustomDomainName
+      BasePath: !Sub '${RestApiName}-${Env}'
+      RestApiId: !Ref RestApi
+      Stage: !Ref Stage
+
+  MasterdataPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !GetAtt RestApi.RootResourceId
+      PathPart: "masterdata"
+      RestApiId: !Ref RestApi
+
+  MasterdatacommercialhierarchyPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref MasterdataPath
+      PathPart: "commercial-hierarchy"
+      RestApiId: !Ref RestApi
+
+  MasterdatacommercialhierarchyOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref MasterdatacommercialhierarchyPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  MasterdatacommercialhierarchydocPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref MasterdatacommercialhierarchyPath
+      PathPart: "doc"
+      RestApiId: !Ref RestApi
+
+  MasterdatacommercialhierarchydocswaggerjsonPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref MasterdatacommercialhierarchydocPath
+      PathPart: "swagger.json"
+      RestApiId: !Ref RestApi
+
+  MasterdatacommercialhierarchydocswaggerjsonOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref MasterdatacommercialhierarchydocswaggerjsonPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  MasterdatacommercialhierarchyregionsPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref MasterdatacommercialhierarchyPath
+      PathPart: "regions"
+      RestApiId: !Ref RestApi
+
+  MasterdatacommercialhierarchyregionsOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref MasterdatacommercialhierarchyregionsPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  MasterdatacommercialhierarchyregionsdistrictsPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref MasterdatacommercialhierarchyregionsPath
+      PathPart: "districts"
+      RestApiId: !Ref RestApi
+
+  MasterdatacommercialhierarchyregionsdistrictsOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref MasterdatacommercialhierarchyregionsdistrictsPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  MasterdatacommercialhierarchyregionsregionCodePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref MasterdatacommercialhierarchyregionsPath
+      PathPart: "{regionCode}"
+      RestApiId: !Ref RestApi
+
+  MasterdatacommercialhierarchyregionsregionCodedistrictsPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref MasterdatacommercialhierarchyregionsregionCodePath
+      PathPart: "districts"
+      RestApiId: !Ref RestApi
+
+  MasterdatacommercialhierarchyregionsregionCodedistrictsOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref MasterdatacommercialhierarchyregionsregionCodedistrictsPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  MasterdatacommercialhierarchychIdPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref MasterdatacommercialhierarchyPath
+      PathPart: "{chId}"
+      RestApiId: !Ref RestApi
+
+  MasterdatacommercialhierarchychIdOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref MasterdatacommercialhierarchychIdPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  MasterdatacommercialhierarchychIdapprovePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref MasterdatacommercialhierarchychIdPath
+      PathPart: "approve"
+      RestApiId: !Ref RestApi
+
+  MasterdatacommercialhierarchychIdapproveOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref MasterdatacommercialhierarchychIdapprovePath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  MasterdatacommercialhierarchychIdexceptionPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref MasterdatacommercialhierarchychIdPath
+      PathPart: "exception"
+      RestApiId: !Ref RestApi
+
+  MasterdatacommercialhierarchychIdexceptionOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref MasterdatacommercialhierarchychIdexceptionPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  MasterdatacommercialhierarchychIdexceptionidPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref MasterdatacommercialhierarchychIdexceptionPath
+      PathPart: "{id}"
+      RestApiId: !Ref RestApi
+
+  MasterdatacommercialhierarchychIdexceptionidapprovePath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref MasterdatacommercialhierarchychIdexceptionidPath
+      PathPart: "approve"
+      RestApiId: !Ref RestApi
+
+  MasterdatacommercialhierarchychIdexceptionidapproveOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref MasterdatacommercialhierarchychIdexceptionidapprovePath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  MasterdatacommercialhierarchychIdexceptionidrejectPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref MasterdatacommercialhierarchychIdexceptionidPath
+      PathPart: "reject"
+      RestApiId: !Ref RestApi
+
+  MasterdatacommercialhierarchychIdexceptionidrejectOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref MasterdatacommercialhierarchychIdexceptionidrejectPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+  MasterdatacommercialhierarchychIdrejectPath:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: ApiGatewayLambdaAuthorizer
+    Properties:
+      ParentId: !Ref MasterdatacommercialhierarchychIdPath
+      PathPart: "reject"
+      RestApiId: !Ref RestApi
+
+  MasterdatacommercialhierarchychIdrejectOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref RestApi
+      ResourceId: !Ref MasterdatacommercialhierarchychIdrejectPath
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+          ResponseTemplates:
+            application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+        ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+
+Outputs:
+  Endpoint:
+    Description: Rest Api Endpoint URL
+    Value: !Sub 'https://${RestApiName}-${Env}.execute-api.${AWS::Region}.amazonaws.com'
+
+  RestApiGatewayId:
+    Description: ApiGatewayId
+    Value: !Ref RestApi
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayId'
+
+  RootResourceId:
+    Description: RootResourceId
+    Value: !GetAtt RestApi.RootResourceId
+    Export:
+      Name: !Sub '${AWS::StackName}-RootResourceId'
+
+  LambdaAuthorizerId:
+    Description: LambdaAuthorizerId
+    Value: !Ref ApiGatewayLambdaAuthorizer
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaAuthorizerId'
+
+  MasterdataPath:
+    Value: !Ref MasterdataPath
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterdataPath'
+  MasterdatacommercialhierarchyPath:
+    Value: !Ref MasterdatacommercialhierarchyPath
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterdatacommercialhierarchyPath'
+  MasterdatacommercialhierarchydocPath:
+    Value: !Ref MasterdatacommercialhierarchydocPath
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterdatacommercialhierarchydocPath'
+  MasterdatacommercialhierarchydocswaggerjsonPath:
+    Value: !Ref MasterdatacommercialhierarchydocswaggerjsonPath
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterdatacommercialhierarchydocswaggerjsonPath'
+  MasterdatacommercialhierarchyregionsPath:
+    Value: !Ref MasterdatacommercialhierarchyregionsPath
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterdatacommercialhierarchyregionsPath'
+  MasterdatacommercialhierarchyregionsdistrictsPath:
+    Value: !Ref MasterdatacommercialhierarchyregionsdistrictsPath
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterdatacommercialhierarchyregionsdistrictsPath'
+  MasterdatacommercialhierarchyregionsregionCodePath:
+    Value: !Ref MasterdatacommercialhierarchyregionsregionCodePath
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterdatacommercialhierarchyregionsregionCodePath'
+  MasterdatacommercialhierarchyregionsregionCodedistrictsPath:
+    Value: !Ref MasterdatacommercialhierarchyregionsregionCodedistrictsPath
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterdatacommercialhierarchyregionsregionCodedistrictsPath'
+  MasterdatacommercialhierarchychIdPath:
+    Value: !Ref MasterdatacommercialhierarchychIdPath
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterdatacommercialhierarchychIdPath'
+  MasterdatacommercialhierarchychIdapprovePath:
+    Value: !Ref MasterdatacommercialhierarchychIdapprovePath
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterdatacommercialhierarchychIdapprovePath'
+  MasterdatacommercialhierarchychIdexceptionPath:
+    Value: !Ref MasterdatacommercialhierarchychIdexceptionPath
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterdatacommercialhierarchychIdexceptionPath'
+  MasterdatacommercialhierarchychIdexceptionidPath:
+    Value: !Ref MasterdatacommercialhierarchychIdexceptionidPath
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterdatacommercialhierarchychIdexceptionidPath'
+  MasterdatacommercialhierarchychIdexceptionidapprovePath:
+    Value: !Ref MasterdatacommercialhierarchychIdexceptionidapprovePath
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterdatacommercialhierarchychIdexceptionidapprovePath'
+  MasterdatacommercialhierarchychIdexceptionidrejectPath:
+    Value: !Ref MasterdatacommercialhierarchychIdexceptionidrejectPath
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterdatacommercialhierarchychIdexceptionidrejectPath'
+  MasterdatacommercialhierarchychIdrejectPath:
+    Value: !Ref MasterdatacommercialhierarchychIdrejectPath
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterdatacommercialhierarchychIdrejectPath'

@@ -1,0 +1,370 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: 'CloudFormation template to create Route53 recordsets'
+
+# Transformation macro for tagging
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Type: 'String'
+    Description: 'Deployment account.'
+    ConstraintDescription: 'Must be either non-prod or prod.'
+    AllowedValues:
+      - 'non-prod'
+      - 'prod'
+
+  ProjectModuleTag:
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Description: 'Project Module Tag Value'
+  
+  VpcStackNameDEV:
+    Default: ''
+    Description: 'Id of the DEV VPC attached to the private hosted zone.'
+    Type: 'String'
+
+  VpcStackNameIT:
+    Default: ''
+    Description: 'Id of the IT VPC attached to the private hosted zone.'
+    Type: 'String'
+
+  VpcStackNamePROD:
+    Default: ''
+    Description: 'Id of the IT VPC attached to the private hosted zone.'
+    Type: 'String'
+
+  ITSHostedZone:
+    Type: 'String'
+    Description: 'Name of the IS hosted zone'
+
+  ITSHostedZoneId:
+    Type: 'String'
+    Description: 'Id of the IS hosted zone'
+
+  RedisHostedZone:
+    Type: 'String'
+    Description: 'Name of the Redis hosted zone'
+
+  RdsHostedZone:
+    Type: 'String'
+    Description: 'Name of the RDS hosted zone'
+
+  SharedDatabaseNonProdRecordSetName:
+    Type: 'String'
+    Description: 'ValueCaptureSharedDatabaseNonProd recordset name'
+  
+  SharedDatabaseNonProdReadOnlyRecordSetName:
+    Type: 'String'
+    Description: 'ValueCaptureSharedDatabaseNonProdReadOnly recordset name'
+  
+  MasterdataProdRecordSetName:
+    Type: 'String'
+    Description: 'MasterdataProd recordset name'  
+  
+  PodDatabaseNonProdRecordSetName:
+    Type: 'String'
+    Description: 'ValueCapturePodDatabaseNonProd recordset name'
+  
+  PodDatabaseProdRecordSetName:
+    Type: 'String'
+    Description: 'ValueCapturePodDatabaseProd recordset name'
+  
+  PodDatabaseWriterProdRecordSetName:
+    Type: 'String'
+    Description: 'ValueCapturePodDatabaseWriterProd recordset name'
+  
+  PodDatabaseProdReaderRecordSetName:
+    Type: 'String'
+    Description: 'ValueCapturePodDatabaseProdReader recordset name'
+  
+  PodDatabaseProdReadOnlyRecordSetName:
+    Type: 'String'
+    Description: 'ValueCapturePodDatabaseProdReadOnly recordset name'
+  
+  ServiceFeeNonProdRecordSetName:
+    Type: 'String'
+    Description: 'ValueCaptureServiceFeeNonProd recordset name'
+  
+  ServiceFeeProdRecordSetName:
+    Type: 'String'
+    Description: 'ValueCaptureServiceFeeProd recordset name'
+  
+  PodRedisClusterMasterNonProdRecordSetName:
+    Type: 'String'
+    Description: 'ValueCapturePodRedisClusterMasterNonProd recordset name'
+  
+  PodRedisClusterReplicaNonProdRecordSetName:
+    Type: 'String'
+    Description: 'ValueCapturePodRedisClusterReplicaNonProd recordset name'
+
+  PodRedisClusterMasterProdRecordSetName:
+    Type: 'String'
+    Description: 'ValueCapturePodRedisClusterMasterProd recordset name'
+  
+  PodRedisClusterReplicaProdRecordSetName:
+    Type: 'String'
+    Description: 'ValueCapturePodRedisClusterReplicaProd recordset name'
+  
+  TtlValue:
+    Type: 'String'
+    Description: 'CNAME record TTL in seconds.'
+  
+  HostedZoneStackName:
+    Type: 'String'
+    Description: 'Name of the stack that the deploys both RDS and Redis Hosted Zones'
+
+Conditions:
+  IsProd: !Equals [!Ref 'Env', 'prod']
+  IsNonProd: !Equals [!Ref 'Env', 'non-prod']
+
+Resources:
+  #RDS recordsets
+  ValueCaptureSharedDatabaseNonProd:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsNonProd'
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub '${HostedZoneStackName}-${Env}-HostedZoneId'
+      Name: !Sub '${SharedDatabaseNonProdRecordSetName}.${RdsHostedZone}'
+      Type: 'CNAME'
+      TTL: !Ref 'TtlValue'
+      ResourceRecords:
+        - 'vcis-non-prod-shared-db-cluster-cluster.cluster-cgchere8wrey.us-east-1.rds.amazonaws.com'
+
+  ValueCaptureSharedDatabaseNonProdReadOnly:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsNonProd'
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub '${HostedZoneStackName}-${Env}-HostedZoneId'
+      Name: !Sub '${SharedDatabaseNonProdReadOnlyRecordSetName}.${RdsHostedZone}'
+      Type: 'CNAME'
+      TTL: !Ref 'TtlValue'
+      ResourceRecords:
+        - 'vcis-non-prod-shared-db-cluster-cluster.cluster-ro-cgchere8wrey.us-east-1.rds.amazonaws.com'
+
+  MasterdataProd:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsProd'
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub '${HostedZoneStackName}-${Env}-HostedZoneId'
+      Name: !Sub '${MasterdataProdRecordSetName}.${RdsHostedZone}'
+      Type: 'CNAME'
+      TTL: !Ref 'TtlValue'
+      ResourceRecords:
+        - 'brazil-value-capture-masterdata-enc.cn8fbnlhx4nv.us-east-1.rds.amazonaws.com'
+
+  ValueCapturePodDatabaseNonProd:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsNonProd'
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub '${HostedZoneStackName}-${Env}-HostedZoneId'
+      Name: !Sub '${PodDatabaseNonProdRecordSetName}.${RdsHostedZone}'
+      Type: 'CNAME'
+      TTL: !Ref 'TtlValue'
+      ResourceRecords:
+        - 'vcis-non-prod-pod-db-cluster.cluster-cgchere8wrey.us-east-1.rds.amazonaws.com'
+
+  ValueCapturePodDatabaseProd:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsProd'
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub '${HostedZoneStackName}-${Env}-HostedZoneId'
+      Name: !Sub '${PodDatabaseProdRecordSetName}.${RdsHostedZone}'
+      Type: 'CNAME'
+      TTL: !Ref 'TtlValue'
+      ResourceRecords:
+        - 'sc-350260138091-pp-nf2336htr5yce-databasecluster-1k42vvh3lzwd7.cluster-cn8fbnlhx4nv.us-east-1.rds.amazonaws.com'
+  
+  ValueCapturePodDatabaseWriterProd:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsProd'
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub '${HostedZoneStackName}-${Env}-HostedZoneId'
+      Name: !Sub '${PodDatabaseWriterProdRecordSetName}.${RdsHostedZone}'
+      Type: 'CNAME'
+      TTL: !Ref 'TtlValue'
+      ResourceRecords:
+        - 'brazil-value-capture-pod-instance.cn8fbnlhx4nv.us-east-1.rds.amazonaws.com'
+  
+  ValueCapturePodDatabaseProdReader:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsProd'
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub '${HostedZoneStackName}-${Env}-HostedZoneId'
+      Name: !Sub '${PodDatabaseProdReaderRecordSetName}.${RdsHostedZone}'
+      Type: 'CNAME'
+      TTL: !Ref 'TtlValue'
+      ResourceRecords:
+        - 'brazil-value-capture-pod-instance1.cn8fbnlhx4nv.us-east-1.rds.amazonaws.com'
+
+  ValueCapturePodDatabaseProdReadOnly:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsProd'
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub '${HostedZoneStackName}-${Env}-HostedZoneId'
+      Name: !Sub '${PodDatabaseProdReadOnlyRecordSetName}.${RdsHostedZone}'
+      Type: 'CNAME'
+      TTL: !Ref 'TtlValue'
+      ResourceRecords:
+        - 'sc-350260138091-pp-nf2336htr5yce-databasecluster-1k42vvh3lzwd7.cluster-ro-cn8fbnlhx4nv.us-east-1.rds.amazonaws.com'
+
+  ValueCaptureServiceFeeNonProd:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsNonProd'
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub "${HostedZoneStackName}-${Env}-HostedZoneId"
+      Name: !Sub '${ServiceFeeNonProdRecordSetName}.${RdsHostedZone}'
+      Type: 'CNAME'
+      TTL: !Ref 'TtlValue'
+      ResourceRecords:
+        - 'brazil-value-capture-service-fee-np.c6ftfip45sqv.us-east-1.rds.amazonaws.com'
+
+  ValueCaptureServiceFeeProd:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsProd'
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub '${HostedZoneStackName}-${Env}-HostedZoneId'
+      Name: !Sub '${ServiceFeeProdRecordSetName}.${RdsHostedZone}'
+      Type: 'CNAME'
+      TTL: !Ref 'TtlValue'
+      ResourceRecords:
+        - 'brazil-value-capture-pod-service-fee-prod.cn8fbnlhx4nv.us-east-1.rds.amazonaws.com'
+
+  # Redis recordset
+  ValueCapturePodRedisClusterMasterNonProd:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsNonProd'
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub '${HostedZoneStackName}-${Env}-RedisHostedZoneId'
+      Name: !Sub '${PodRedisClusterMasterNonProdRecordSetName}.${RedisHostedZone}'
+      Type: 'CNAME'
+      TTL: !Ref 'TtlValue'
+      ResourceRecords:
+        - 'master.brazil-pod-redis-v5.kitmys.use1.cache.amazonaws.com'
+  
+  ValueCapturePodRedisClusterReplicaNonProd:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsNonProd'
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub '${HostedZoneStackName}-${Env}-RedisHostedZoneId'
+      Name: !Sub '${PodRedisClusterReplicaNonProdRecordSetName}.${RedisHostedZone}'
+      Type: 'CNAME'
+      TTL: !Ref 'TtlValue'
+      ResourceRecords:
+        - 'replica.brazil-pod-redis-v5.kitmys.use1.cache.amazonaws.com'
+
+#Redis Prod
+  ValueCapturePodRedisClusterMasterProd:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsProd'
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub '${HostedZoneStackName}-${Env}-RedisHostedZoneId'
+      Name: !Sub '${PodRedisClusterMasterProdRecordSetName}.${RedisHostedZone}'
+      Type: 'CNAME'
+      TTL: !Ref 'TtlValue'
+      ResourceRecords:
+        - 'master.pod-brazil-redis.kjimyl.use1.cache.amazonaws.com'
+  
+  ValueCapturePodRedisClusterReplicaProd:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsProd'
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub '${HostedZoneStackName}-${Env}-RedisHostedZoneId'
+      Name: !Sub '${PodRedisClusterReplicaProdRecordSetName}.${RedisHostedZone}'
+      Type: 'CNAME'
+      TTL: !Ref 'TtlValue'
+      ResourceRecords:
+        - 'replica.pod-brazil-redis.kjimyl.use1.cache.amazonaws.com'
+
+  #Bastion Non-Prod
+  ValueCapturePrimaryBastionDev:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsNonProd'
+    Properties:
+      HostedZoneId: !Ref ITSHostedZoneId
+      Name: !Sub 'bastion.dev.${ITSHostedZone}'
+      SetIdentifier: vcis-bastion-primary-dev
+      Type: 'A'
+      TTL: !Ref 'TtlValue'
+      Weight: 50
+      ResourceRecords:
+        - Fn::ImportValue: !Sub '${VpcStackNameDEV}-PrimaryBastionIP'
+
+  ValueCaptureSecondaryBastionDev:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsNonProd'
+    Properties:
+      HostedZoneId: !Ref ITSHostedZoneId
+      Name: !Sub 'bastion.dev.${ITSHostedZone}'
+      SetIdentifier: vcis-bastion-secondary-dev
+      Type: 'A'
+      TTL: !Ref 'TtlValue'
+      Weight: 50
+      ResourceRecords:
+        - Fn::ImportValue: !Sub '${VpcStackNameDEV}-SecondaryBastionIP'
+
+  ValueCapturePrimaryBastionIt:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsNonProd'
+    Properties:
+      HostedZoneId: !Ref ITSHostedZoneId
+      Name: !Sub 'bastion.it.${ITSHostedZone}'
+      SetIdentifier: vcis-bastion-primary-it
+      Type: 'A'
+      TTL: !Ref 'TtlValue'
+      Weight: 50
+      ResourceRecords:
+        - Fn::ImportValue: !Sub '${VpcStackNameIT}-PrimaryBastionIP'
+
+  ValueCaptureSecondaryBastionIt:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsNonProd'
+    Properties:
+      HostedZoneId: !Ref ITSHostedZoneId
+      Name: !Sub 'bastion.it.${ITSHostedZone}'
+      SetIdentifier: vcis-bastion-secondary-it
+      Type: 'A'
+      TTL: !Ref 'TtlValue'
+      Weight: 50
+      ResourceRecords:
+        - Fn::ImportValue: !Sub '${VpcStackNameIT}-SecondaryBastionIP'
+
+  #Bastion Prod
+  ValueCapturePrimaryBastionProd:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsProd'
+    Properties:
+      HostedZoneId: !Ref ITSHostedZoneId
+      Name: !Sub 'bastion.prod.${ITSHostedZone}'
+      SetIdentifier: vcis-bastion-primary-prod
+      Type: 'A'
+      TTL: !Ref 'TtlValue'
+      Weight: 50
+      ResourceRecords:
+        - Fn::ImportValue: !Sub '${VpcStackNamePROD}-PrimaryBastionIP'
+
+  ValueCaptureSecondaryBastionProd:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: 'IsProd'
+    Properties:
+      HostedZoneId: !Ref ITSHostedZoneId
+      Name: !Sub 'bastion.prod.${ITSHostedZone}'
+      SetIdentifier: vcis-bastion-secondary-prod
+      Type: 'A'
+      TTL: !Ref 'TtlValue'
+      Weight: 50
+      ResourceRecords:
+        - Fn::ImportValue: !Sub '${VpcStackNamePROD}-SecondaryBastionIP'

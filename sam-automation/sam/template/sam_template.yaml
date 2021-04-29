@@ -1,0 +1,259 @@
+Transform: 'AWS::Serverless-2016-10-31'
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+  FunctionName:
+    Description: "Function Name. Stage will be added to the name: {FunctionName}-{Stage}"
+    Type: String
+    Default: {{DEFAULT_FUNCTION_NAME}}
+  Timeout:
+    Description: "Timeout [s]"
+    Type: Number
+    Default: {{DEFAULT_TIMEOUT}}
+  MemorySize:
+    Description: "Memory Size [MB]"
+    Type: Number
+    Default: {{DEFAULT_MEMORY_SIZE}}
+  KMS:
+    Description: "SSM Parameter Name containing KMS Arn for decrypting keys"
+    Type: AWS::SSM::Parameter::Value<String>
+  {{#HAS_VPC}}
+  VPCStackName:
+    Description: "VPC Stack name"
+    Type: String
+  {{/HAS_VPC}}
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+  {{#HAS_LOG_GROUP}}
+  AppAccountLevelResourcesStackName:
+    Description: "Account Level Resources Stack Name"
+    Type: String
+  {{/HAS_LOG_GROUP}}
+  {{#HAS_API_GW_INTEGRATION}}
+  ApiGwStackName:
+    Description: "API Gateway Stack name"
+    Type: String
+  ApiGateWayDeploymentUpdateStackName:
+    Description: "API Gateway deployment update stage"
+    Type: String
+  {{/HAS_API_GW_INTEGRATION}}
+  {{#each SHARED_RESOURCES_STACKS}}
+  {{this}}:
+    Description: "{{this}}"
+    Type: String
+  {{/each}}
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+
+Mappings:
+  StagingValuesMap:
+    poc:
+      Stage: 'DEV'
+    dev:
+      Stage: 'DEV'
+    it:
+      Stage: 'TEST'
+    prod:
+      Stage: 'PROD'
+
+Resources:
+  FunctionApi:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Join ['-',[!Ref FunctionName, !FindInMap [StagingValuesMap, !Ref Env, Stage]]]
+      Handler: {{HANDLER}}
+      Runtime: nodejs10.x
+      CodeUri: ./
+      Environment:
+        Variables:
+          STAGE: !FindInMap [StagingValuesMap, !Ref Env, Stage]
+          {{#HAS_LOG_GROUP}}
+          REGION:
+            Ref: AWS::Region
+          LOG_GROUP:
+            Fn::ImportValue: !Sub "${AppAccountLevelResourcesStackName}-{{LOG_GROUP_NAME}}"
+          {{/HAS_LOG_GROUP}}
+      Timeout:
+        Ref: Timeout
+      MemorySize:
+        Ref: MemorySize
+      {{#HAS_VPC}}
+      VpcConfig:
+        SubnetIds:
+          - Fn::ImportValue: !Sub "${VPCStackName}-PrivateSubnet1"
+          - Fn::ImportValue: !Sub "${VPCStackName}-PrivateSubnet2"
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub "${VPCStackName}-VcisRdsSecurityGroup"
+      {{/HAS_VPC}}
+      {{#RESERVED_CONCURRENT_EXECUTIONS}}
+      ReservedConcurrentExecutions: {{RESERVED_CONCURRENT_EXECUTIONS}}
+      {{/RESERVED_CONCURRENT_EXECUTIONS}}
+      Policies:
+        - VPCAccessPolicy: {}
+        {{#HAS_LOG_GROUP}}
+        #Inline Policy for Centralize Logging.
+        - Statement:
+          - Effect: Allow
+            Action:
+              - 'logs:DescribeLogStreams'
+            Resource:
+              Fn::Join:
+                - ''
+                - - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:'
+                  - Fn::ImportValue: !Sub "${AppAccountLevelResourcesStackName}-{{LOG_GROUP_NAME}}"
+                  - ':log-stream:*'
+       {{/HAS_LOG_GROUP}}
+        # Inline policy allowing access to decrypt using KMS.
+        - Statement:
+          - Effect: Allow
+            Action:
+              - 'kms:Decrypt'
+            Resource:
+              Ref: KMS
+        - Statement:
+          - Effect: Allow
+            Action: 'iam:*'
+            Resource: '*'
+        {{#SHARED_RESOURCES_CONSUMER_SQS}}
+        - Statement:
+          - Effect: Allow
+            Action:
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            Resource:
+              Fn::ImportValue: !Sub "{{resource}}"
+        {{/SHARED_RESOURCES_CONSUMER_SQS}}
+        {{#SHARED_RESOURCES_CONSUMER_SNS}}
+        - Statement:
+          - Effect: Allow
+            Action:
+            - sns:ReceiveMessage
+            - sns:DeleteMessage
+            Resource:
+              Fn::ImportValue: !Sub "{{resource}}"
+        {{/SHARED_RESOURCES_CONSUMER_SNS}}
+        {{#each SHARED_RESOURCES_PRODUCER_SQS}}
+        - Statement:
+          - Effect: Allow
+            Action:
+            - sqs:SendMessage
+            Resource:
+              Fn::ImportValue: !Sub "{{this}}"
+        {{/each}}
+        {{#each SHARED_RESOURCES_PRODUCER_SNS}}
+        - Statement:
+          - Effect: Allow
+            Action:
+            - sns:SendMessage
+            Resource:
+              Fn::ImportValue: !Sub "{{this}}"
+        {{/each}}
+      PermissionsBoundary:
+              Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/standard-permissions-boundary
+
+  #Function Alias
+  LambdaAlias:
+    Type: "AWS::Lambda::Alias"
+    Properties:
+      FunctionName: !Ref FunctionApi
+      FunctionVersion: "$LATEST"
+      Name: !FindInMap [StagingValuesMap, !Ref Env, Stage]
+
+  {{#SHARED_RESOURCES_CONSUMER_SQS}}
+  LambdaFunctionSQSEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: {{batchSize}}
+      EventSourceArn:
+        Fn::ImportValue: !Sub "{{resource}}"
+      FunctionName: !Sub LambdaAlias
+  {{/SHARED_RESOURCES_CONSUMER_SQS}}
+
+  {{#SHARED_RESOURCES_CONSUMER_SNS}}
+  LambdaFunctionSNSEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: {{batchSize}}
+      EventSourceArn:
+        Fn::ImportValue: !Sub "{{resource}}"
+      FunctionName: !Sub LambdaAlias
+  {{/SHARED_RESOURCES_CONSUMER_SNS}}
+
+  {{#HAS_API_GW_INTEGRATION}}
+  #Lambda permission to be invoked by API Gateway.
+  Permission:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - LambdaAlias
+      - FunctionApi
+    Properties:
+      FunctionName: !Join [':', [!Ref FunctionApi, !FindInMap [StagingValuesMap, !Ref Env, Stage]]]
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ''
+          - - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:'
+            - Fn::ImportValue: !Sub "${ApiGwStackName}-ApiGatewayId"
+            - '/*'
+
+
+  #Deployment of the API GW
+  ApiGatewayDeployment$timestamp:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: #All methods of API-GW created.
+      {{#each API_GW_METHODS}}
+      - {{resourceName}}
+      {{/each}}
+    Properties:
+      Description:
+        Fn::Sub: ${FunctionName}
+      RestApiId:
+        Fn::ImportValue: !Sub "${ApiGwStackName}-ApiGatewayId"
+
+  ApiGatewayUpdateStage:
+    Type: 'Custom::ApiGatewayUpdateStage'
+    Version: '1.0'
+    Properties:
+      ServiceToken:
+        Fn::ImportValue: !Sub "${ApiGateWayDeploymentUpdateStackName}-ApiGatewayUpdateStageFunctionArn"
+      DeploymentId: !Ref ApiGatewayDeployment$timestamp
+      RestApiId:
+        Fn::ImportValue: !Sub "${ApiGwStackName}-ApiGatewayId"
+    DependsOn:
+      - ApiGatewayDeployment$timestamp
+  {{/HAS_API_GW_INTEGRATION}}
+
+  {{#each API_GW_METHODS}}
+  {{resourceName}}:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      {{#if hasAuth}}
+      AuthorizationType: CUSTOM
+        AuthorizerId:
+          Fn::ImportValue: !Sub "${ApiGwStackName}-LambdaAuthorizerId"
+      {{else}}
+      AuthorizationType: NONE
+      {{/if}}
+      HttpMethod: {{method}}
+      Integration:
+        IntegrationHttpMethod: POST
+        PassthroughBehavior: WHEN_NO_MATCH
+        Type: AWS_PROXY
+        Uri: !Join ['',[!Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FunctionApi.Arn}:', !FindInMap [StagingValuesMap, !Ref Env, Stage], '/invocations']]
+      OperationName: 'lambda'
+      ResourceId:
+        Fn::ImportValue: !Sub "${ApiGwStackName}-{{parentKey}}"
+      RestApiId:
+        Fn::ImportValue: !Sub "${ApiGwStackName}-ApiGatewayId"
+  {{/each}}

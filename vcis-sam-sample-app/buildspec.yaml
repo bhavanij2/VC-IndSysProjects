@@ -1,0 +1,28 @@
+version: 0.2
+env:
+  parameter-store:
+    NPM_AUTH_TOKEN: "/vcis/common/infra/npm/auth-token"
+phases:
+  install:
+    runtime-versions:
+      nodejs: 8
+    commands:
+      - apt-get update -y
+      - node --version
+      - npm config set registry https://registry.npmjs.org/
+      - npm config set @monsantoit:registry https://npm.platforms.engineering
+      - npm config set //npm.platforms.engineering/:_authToken $NPM_AUTH_TOKEN
+      - npm install --no-save
+      - npm --version
+      - npm install jest --save-dev
+  pre_build:
+    commands:
+      - echo "No pre-build"
+  build:
+    commands:
+      - aws cloudformation package --template saml.yaml --s3-bucket ${BUILD_OUTPUT_BUCKET} --output-template sam-output.yaml
+artifacts:
+  files:
+    - sam-output.yaml
+  type: zip
+  name: vcis-sam-sample-app-${ENV}

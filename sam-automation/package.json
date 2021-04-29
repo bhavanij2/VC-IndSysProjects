@@ -1,0 +1,10 @@
+{
+  "name": "root",
+  "private": true,
+  "scripts": {
+    "test": "(cd shared && npm test); (cd api && npm test); (cd sam && npm test);",
+    "lintfix": "(cd shared && npm run lintfix); (cd api && npm run lintfix); (cd sam && npm run lintfix);",
+    "preinstall": "(cd shared && npm run lint); (cd api && npm run lint); (cd sam && npm run lint);",
+    "postinstall": "(cd api &&  npm install); (cd sam &&  npm install);"
+  }
+}

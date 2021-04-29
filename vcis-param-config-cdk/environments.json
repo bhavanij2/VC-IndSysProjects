@@ -1,0 +1,18 @@
+{
+    "non-prod": {
+      "dependencies": {
+        "@monsantoit/vcis-cdk-utils": "non-prod"
+      },
+      "peerDependencies": {
+        "@monsantoit/vcis-cdk-utils": "non-prod"
+      }
+    },
+    "prod": {
+      "dependencies": {
+        "@monsantoit/vcis-cdk-utils": "latest"
+      },
+      "peerDependencies": {
+        "@monsantoit/vcis-cdk-utils": "latest"
+      }
+    }
+  }

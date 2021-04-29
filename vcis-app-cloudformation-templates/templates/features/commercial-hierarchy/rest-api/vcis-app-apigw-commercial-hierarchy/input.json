@@ -1,0 +1,30 @@
+{
+  "newRestApiName": "vcis-app-apigw-commercial-hierarchy",
+  "feature": "commercial-hierarchy",
+  "newRestApiDescription": "Commercial Hierarchy API",
+  "migrationBranchName": "VCT-10827",
+  "commitMessagePrefix": "VCT-10827 -API GW AUTOMATIC MIGRATION",
+  "githubTokenSSM": "/vcis/non-prod/app/github/token-jrive20",
+  "pathsToInclude": [
+    "/masterdata/commercial-hierarchy",
+    "/masterdata/commercial-hierarchy/doc/swagger.json",
+    "/masterdata/commercial-hierarchy/regions",
+    "/masterdata/commercial-hierarchy/regions/districts",
+    "/masterdata/commercial-hierarchy/regions/{regionCode}/districts",
+    "/masterdata/commercial-hierarchy/{chId}",
+    "/masterdata/commercial-hierarchy/{chId}/approve",
+    "/masterdata/commercial-hierarchy/{chId}/reject",
+    "/masterdata/commercial-hierarchy/{chId}/exception",
+    "/masterdata/commercial-hierarchy/{chId}/exception/{id}/approve",
+    "/masterdata/commercial-hierarchy/{chId}/exception/{id}/reject"
+  ],
+  "originalRestApiId": "mks7fkp2za",
+  "originalRestApiStageName": "dev",
+  "baseBranch": "develop",
+  "tags": {
+    "teamName": "lannister",
+    "featureName": "commercial-hierarchy",
+    "applicationName": "Industry System",
+    "moduleName": "IS"
+  }
+}

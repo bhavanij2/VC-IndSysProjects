@@ -1,0 +1,7 @@
+{
+  "Parameters" : {
+    "Env": "prod",
+    "ProjectModuleTag": "/vcis/prod/infra/tags/project-module-value-capture-industry-system",
+    "AccountLevelResourcesStackName": "vcis-prod-account-level-resources"
+  }
+}

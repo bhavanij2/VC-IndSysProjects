@@ -1,0 +1,254 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "CloudFormation template to create ElastiCache cluster"
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Description: 'Deployment Environment'
+    Type: String
+    AllowedValues:
+      - 'dev'
+      - 'it'
+      - 'prod'
+    ConstraintDescription: 'Must be either dev, it or prod.'
+  
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  NodeType:
+    AllowedValues:
+      - cache.m5.large
+      - cache.m5.xlarge
+      - cache.m5.2xlarge
+      - cache.m5.4xlarge
+      - cache.m5.12xlarge
+      - cache.m5.24xlarge
+      - cache.m4.large
+      - cache.m4.xlarge
+      - cache.m4.2xlarge
+      - cache.m4.4xlarge
+      - cache.m4.10xlarge
+      - cache.t3.micro
+      - cache.t3.small
+      - cache.t3.medium
+      - cache.t2.micro
+      - cache.t2.small
+      - cache.t2.medium
+      - cache.r5.large
+      - cache.r5.xlarge
+      - cache.r5.2xlarge
+      - cache.r5.4xlarge
+      - cache.r5.12xlarge
+      - cache.r5.24xlarge
+      - cache.r4.large
+      - cache.r4.xlarge
+      - cache.r4.2xlarge
+      - cache.r4.4xlarge
+      - cache.r4.8xlarge
+      - cache.r4.16xlarge
+    Description: >-
+      The compute and memory capacity of the nodes in the node group.
+      For more info see the docs https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-elasticache-cache-cluster.html#cfn-elasticache-cachecluster-cachenodetype
+    Type: String
+
+  VPCStackName:
+    Type: String
+    Description: The VPC stack name
+
+  ClusterName:
+    Type: String
+    Description: >-
+      A name for the cache cluster.
+      For more info see the docs https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-elasticache-cache-cluster.html#cfn-elasticache-cachecluster-clustername
+
+  Engine:
+    AllowedValues:
+      - memcached
+      - redis
+    Type: String
+    Description: The name of the cache engine to be used for this cluster.
+  
+  NumCacheNodes:
+    Type: Number
+    Description: The number of cache nodes that the cache cluster should have.
+    MinValue: 0
+
+  PreferredMaintenanceWindow:
+    Type: String
+    Description: >-
+      Specifies the weekly time range during which maintenance on the cluster is performed.
+      For more info see the docs https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-elasticache-cache-cluster.html#cfn-elasticache-cachecluster-preferredmaintenancewindow
+    Default: fri:06:30-fri:07:30
+
+  SnapshotRetentionLimit:
+    Type: Number
+    Description: >-
+      The number of days for which ElastiCache retains automatic snapshots before deleting them. For example, if you set SnapshotRetentionLimit to 5, a snapshot taken today is retained for 5 days before being deleted.
+    Default: 1
+  
+  SnapshotWindow:
+    Type: String
+    Description: >-
+      The daily time range (in UTC) during which ElastiCache begins taking a daily snapshot of your node group
+      For more info see the docs https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-elasticache-cache-cluster.html#cfn-elasticache-cachecluster-snapshotwindow
+    Default: 09:00-10:00
+
+  AtRestEncryptionEnabled:
+    Type: String
+    Description: >-
+      A flag that enables encryption at rest when set to true.
+      You cannot modify the value of AtRestEncryptionEnabled after the replication group is created. To enable encryption at rest on a replication group you must set AtRestEncryptionEnabled to true when you create the replication group.
+    Default: true
+
+  TransitEncryptionEnabled:
+    Type: String
+    Description: >-
+      A flag that enables in-transit encryption when set to true.
+      You cannot modify the value of TransitEncryptionEnabled after the cluster is created. To enable in-transit encryption on a cluster you must set TransitEncryptionEnabled to true when you create a cluster.
+    Default: true
+  
+  AuthToken:
+    Type: String
+    Description: >-
+        The password used to access a password protected server.
+        For more info see the docs https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticache-replicationgroup.html#cfn-elasticache-replicationgroup-authtoken
+
+  NotificationStackName:
+    Description: >-
+        The name of the stack that is exporting the Slack Notifier SNS Topic
+    Type: 'String'
+
+Conditions: 
+  encryptionEnabled: !Equals [ !Ref TransitEncryptionEnabled, true ]
+
+Resources:
+
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties: 
+      Description: 'Cache Subnet Group'
+      SubnetIds: 
+        - Fn::ImportValue: !Sub "${VPCStackName}-RdsSubnet1"
+        - Fn::ImportValue: !Sub "${VPCStackName}-RdsSubnet2"
+
+  ReplicationGroup:
+    Type: 'AWS::ElastiCache::ReplicationGroup'
+    Properties:
+      ReplicationGroupDescription: !Sub "Redis replication group for ${ClusterName}"
+      ReplicationGroupId:
+        Ref: ClusterName
+      NumCacheClusters:
+        Ref: NumCacheNodes
+      Engine:
+        Ref: Engine
+      CacheNodeType:
+        Ref: NodeType
+      CacheSubnetGroupName:
+        Ref: RedisSubnetGroup
+      PreferredMaintenanceWindow:
+        Ref: PreferredMaintenanceWindow
+      SnapshotRetentionLimit:
+        Ref: SnapshotRetentionLimit
+      SnapshotWindow: 
+        Ref: SnapshotWindow
+      AtRestEncryptionEnabled:
+        Ref: AtRestEncryptionEnabled
+      TransitEncryptionEnabled:
+        Ref: TransitEncryptionEnabled
+      AuthToken: !If
+        - encryptionEnabled
+        - !Ref AuthToken
+        - !Ref AWS::NoValue
+      SecurityGroupIds: 
+        - Fn::ImportValue: !Sub "${VPCStackName}-VcisRdsSecurityGroup"
+
+  PrimaryEndPointAddressParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/vcis/${Env}/app/elastiCache/primary-endpoint-address'
+      Type: String
+      Value: !GetAtt ReplicationGroup.PrimaryEndPoint.Address
+      Description: SSM Parameter for primary endpoint address.
+
+  CPUUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ClusterName}-CPUUtilization"
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${NotificationStackName}-SNSTopicArn"
+      AlarmDescription: "Primary database CPU utilization is over 80%."
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: CacheClusterId
+          Value: !Sub '${ReplicationGroup}-001'
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: AWS/ElastiCache
+      Period: 600
+      Statistic: Average
+      Threshold: 90
+  
+  EvictionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ClusterName}-Evictions"
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${NotificationStackName}-SNSTopicArn"
+      AlarmDescription: "The number of keys that have been evicted due to the maxmemory limit"
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: CacheClusterId
+          Value: !Sub '${ReplicationGroup}-001'
+      EvaluationPeriods: 2
+      MetricName: Evictions
+      Namespace: AWS/ElastiCache
+      Period: 600
+      Statistic: Average
+      Threshold: 90
+
+  CurrConnectionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ClusterName}-CurrConnections"
+      AlarmActions:
+        - Fn::ImportValue: !Sub "${NotificationStackName}-SNSTopicArn"
+      AlarmDescription: "The number of client connections, excluding connections from read replicas"
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: CacheClusterId
+          Value: !Sub '${ReplicationGroup}-001'
+      EvaluationPeriods: 2
+      MetricName: CurrConnections
+      Namespace: AWS/ElastiCache
+      Period: 300
+      Statistic: Average
+      Threshold: 90
+
+Outputs:
+  ClusterNameOutput:
+    Description: ClusterName.
+    Value: !Ref ClusterName
+    Export:
+      Name: !Sub '${AWS::StackName}-ClusterName'
+  PrimaryEndPointAddressOutput:
+    Description: The DNS address of the primary read-write cache node.
+    Value: !GetAtt ReplicationGroup.PrimaryEndPoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}-PrimaryEndPointAddress'
+  CPUUtilizationAlarmOutput:
+    Description: CPUUtilizationAlarm's arn
+    Value: !GetAtt CPUUtilizationAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-CPUUtilizationAlarm'
+  EvictionsAlarmOutput:
+    Description: EvictionsAlarm's arn
+    Value: !GetAtt EvictionsAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-EvictionsAlarm'
+  CurrConnectionsAlarmOutput:
+    Description: CurrConnectionsAlarm's arn
+    Value: !GetAtt CurrConnectionsAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-CurrConnectionsAlarm'

@@ -1,0 +1,145 @@
+Transform: [VcisCommonTagsMacro]
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+  KMS:
+      Description: "SSM Parameter Name containing KMS Arn for decrypting keys"
+      Type: AWS::SSM::Parameter::Value<String>
+  ProjectModuleTag:
+      Type: AWS::SSM::Parameter::Value<String>
+      Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+
+Mappings:
+  StagingValuesMap:
+    poc:
+      Stage: 'DEV'
+    dev:
+      Stage: 'DEV'
+    it:
+      Stage: 'TEST'
+    prod:
+      Stage: 'PROD'
+
+Resources:
+  ### Queues
+
+  {{#each QUEUES}}
+  {{QueueSAMResourceName}}:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: {{DelaySeconds}}
+      {{#HasKms}}
+      KmsDataKeyReusePeriodSeconds: {{KmsDataKeyReusePeriodSeconds}}
+      KmsMasterKeyId: !Ref KMS
+      {{/HasKms}}
+      MaximumMessageSize: {{MaximumMessageSize}}
+      MessageRetentionPeriod: {{MessageRetentionPeriod}}
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: {{VisibilityTimeout}}
+      QueueName: !Sub "{{SQSName}}-${Env}"
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt {{QueueSAMResourceName}}Error.Arn
+        maxReceiveCount: 5
+
+  {{QueueSAMResourceName}}Error:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: {{DelaySeconds}}
+      {{#HasKms}}
+      KmsDataKeyReusePeriodSeconds: {{KmsDataKeyReusePeriodSeconds}}
+      KmsMasterKeyId: !Ref KMS
+      {{/HasKms}}
+      MaximumMessageSize: {{MaximumMessageSize}}
+      MessageRetentionPeriod: {{MessageRetentionPeriod}}
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: {{VisibilityTimeout}}
+      QueueName: !Sub "{{SQSName}}-error-${Env}"
+
+  {{QueueSAMResourceName}}Policy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt {{QueueSAMResourceName}}.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt {{QueueSAMResourceName}}.Arn
+          {{#HasTopics}}
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt {{QueueSAMResourceName}}.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn:
+                  {{#each Topics}}
+                  - !Sub '{{TopicArn}}-${Env}'
+                  {{/each}}
+          {{/HasTopics}}
+      Queues:
+        - !Ref {{QueueSAMResourceName}}
+    DependsOn:
+      - {{QueueSAMResourceName}}
+
+  {{/each}}
+
+  ### SNS Topics
+
+  {{#each TOPICS}}
+  {{TopicSAMResourceName}}:
+    Type: AWS::SNS::Topic
+      Properties:
+        DisplayName: {{DisplayName}}
+        TopicName: !Sub "{{TopicName}}${Env}"
+        {{#KmsMasterKeyId}}
+        KmsMasterKeyId: !Ref KMS
+        {{/KmsMasterKeyId}}
+        Subscription:
+          {{#each Subscriptions}}
+          - Endpoint: !Sub "{{Endpoint}}${Env}"
+            Protocol: {{Protocol}}
+          {{/each}}
+
+  {{TopicSAMResourceName}}Policy:
+    Type: AWS::SNS::TopicPolicy
+      Properties:
+        PolicyDocument:
+          Version: "2008-10-17"
+          Id: "__default_policy_ID"
+          Statement:
+            - Effect: Allow
+              Principal: "*"
+              Action:
+                - SNS:GetTopicAttributes
+                - SNS:SetTopicAttributes
+                - SNS:AddPermission
+                - SNS:RemovePermission
+                - SNS:DeleteTopic
+                - SNS:Subscribe
+                - SNS:ListSubscriptionsByTopic
+                - SNS:Publish
+                - SNS:Receive
+              Resource: !GetAtt {{TopicSAMResourceName}}.Arn
+              Condition:
+                StringEquals:
+                  AWS:SourceOwner: {{AccountNumber}}
+          Topics:
+            - !Ref {{TopicSAMResourceName}}
+    DependsOn:
+      - {{TopicSAMResourceName}}
+  {{/each}}

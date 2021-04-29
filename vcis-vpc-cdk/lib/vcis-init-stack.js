@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const cdk = require("@aws-cdk/cdk");
+const vcis_cdk_utils_1 = require("@monsantoit/vcis-cdk-utils");
+const InputParameterHolder_1 = require("@monsantoit/vcis-cdk-utils/lib/holder/InputParameterHolder");
+class VcisInitStack extends cdk.Stack {
+    constructor(app, id, props) {
+        super(app, id, props);
+        new cdk.SSMParameterProvider(this, {
+            parameterName: `/vcis/${vcis_cdk_utils_1.EnvironmentHolder.getEnv()}/infra/vpc/input/vpcCidrList`,
+        }).parameterValue();
+        InputParameterHolder_1.InputParameterHolder.setup(this, this.node);
+    }
+}
+exports.VcisInitStack = VcisInitStack;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoidmNpcy1pbml0LXN0YWNrLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsidmNpcy1pbml0LXN0YWNrLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7O0FBQUEsb0NBQXFDO0FBQ3JDLCtEQUF3RTtBQUN4RSxxR0FBa0c7QUFFbEcsTUFBYSxhQUFjLFNBQVEsR0FBRyxDQUFDLEtBQUs7SUFFeEMsWUFBWSxHQUFZLEVBQUUsRUFBVSxFQUFFLEtBQXNCO1FBQ3hELEtBQUssQ0FBQyxHQUFHLEVBQUUsRUFBRSxFQUFFLEtBQUssQ0FBQyxDQUFDO1FBQ3RCLElBQUksR0FBRyxDQUFDLG9CQUFvQixDQUFDLElBQUksRUFBRTtZQUMvQixhQUFhLEVBQUUsU0FBUyxrQ0FBaUIsQ0FBQyxNQUFNLEVBQUUsOEJBQThCO1NBQ2pGLENBQUMsQ0FBQyxjQUFjLEVBQUUsQ0FBQztRQUN0QiwyQ0FBb0IsQ0FBQyxLQUFLLENBQUMsSUFBSSxFQUFFLElBQUksQ0FBQyxJQUFJLENBQUMsQ0FBQztJQUVoRCxDQUFDO0NBQ0o7QUFWRCxzQ0FVQyIsInNvdXJjZXNDb250ZW50IjpbImltcG9ydCBjZGsgPSByZXF1aXJlKCdAYXdzLWNkay9jZGsnKTtcbmltcG9ydCB7IFZjaXNBcHAsIEVudmlyb25tZW50SG9sZGVyIH0gZnJvbSAnQG1vbnNhbnRvaXQvdmNpcy1jZGstdXRpbHMnO1xuaW1wb3J0IHsgSW5wdXRQYXJhbWV0ZXJIb2xkZXIgfSBmcm9tICdAbW9uc2FudG9pdC92Y2lzLWNkay11dGlscy9saWIvaG9sZGVyL0lucHV0UGFyYW1ldGVySG9sZGVyJztcblxuZXhwb3J0IGNsYXNzIFZjaXNJbml0U3RhY2sgZXh0ZW5kcyBjZGsuU3RhY2sge1xuXG4gICAgY29uc3RydWN0b3IoYXBwOiBWY2lzQXBwLCBpZDogc3RyaW5nLCBwcm9wcz86IGNkay5TdGFja1Byb3BzKSB7XG4gICAgICAgIHN1cGVyKGFwcCwgaWQsIHByb3BzKTtcbiAgICAgICAgbmV3IGNkay5TU01QYXJhbWV0ZXJQcm92aWRlcih0aGlzLCB7XG4gICAgICAgICAgICBwYXJhbWV0ZXJOYW1lOiBgL3ZjaXMvJHtFbnZpcm9ubWVudEhvbGRlci5nZXRFbnYoKX0vaW5mcmEvdnBjL2lucHV0L3ZwY0NpZHJMaXN0YCxcbiAgICAgICAgICB9KS5wYXJhbWV0ZXJWYWx1ZSgpO1xuICAgICAgICBJbnB1dFBhcmFtZXRlckhvbGRlci5zZXR1cCh0aGlzLCB0aGlzLm5vZGUpO1xuICAgICAgICBcbiAgICB9XG59Il19

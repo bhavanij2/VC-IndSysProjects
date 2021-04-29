@@ -1,0 +1,34 @@
+[
+  {
+    "ParameterKey": "WorkloadName",
+    "ParameterValue": "tagging-macro"
+  },
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "poc"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/poc/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "S3SourceKey",
+    "ParameterValue": "/vcis/poc/infra/tagging-macro/deploy-artifact"
+  },
+  {
+    "ParameterKey": "BuildSpecPath",
+    "ParameterValue": "/vcis/poc/infra/tagging-macro/buildspec-path"
+  },
+  {
+    "ParameterKey": "TemplatePath",
+    "ParameterValue": "/vcis/poc/infra/tagging-macro/template-path"
+  },
+  {
+    "ParameterKey": "TemplateFile",
+    "ParameterValue": "/vcis/poc/infra/tagging-macro/template-file"
+  },
+  {
+    "ParameterKey": "NotifyArn",
+    "ParameterValue": "/vcis/dev/app/sns/alarm-notify-topic"
+  }
+]

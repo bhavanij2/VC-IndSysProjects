@@ -1,0 +1,279 @@
+Transform: [VcisCommonTagsMacro]
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - poc
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either poc, dev, it or prod
+  KMS:
+      Description: "SSM Parameter Name containing KMS Arn for decrypting keys"
+      Type: AWS::SSM::Parameter::Value<String>
+  ProjectModuleTag:
+      Type: AWS::SSM::Parameter::Value<String>
+      Description: Project Module Tag SSM Param Name. Default is '/vcis/{Env}/infra/tags/project-module-value-capture-industry-system'
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+  ChDataRetrieverSQSName:
+    Type: String
+    Description: ChDataRetrieverSQSName description
+  ChPersisterSQSName:
+    Type: String
+    Description: ChPersisterSQSName description
+  ChProcessSQSName:
+    Type: String
+    Description: ChProcessSQSName description
+  BroadcastTriggerSNSName:
+    Type: String
+    Description: BroadcastTriggerSNSName description
+  ChBroadcastSNSName:
+    Type: String
+    Description: ChBroadcastSNSName description
+
+Resources:
+  ### Queues
+  ChDataRetrieverSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 60
+      QueueName: !Join
+        - ''
+        - - !Ref ChDataRetrieverSQSName
+          - '-'
+          - !Ref Env
+
+  ChDataRetrieverSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt ChDataRetrieverSQS.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ChDataRetrieverSQS.Arn
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ChDataRetrieverSQS.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn:
+                  - !Sub 'arn:aws:sns:us-east-1:578248469025:vcis-app-bulk-splited-topic-${Env}'
+      Queues:
+        - !Ref ChDataRetrieverSQS
+    DependsOn:
+      - ChDataRetrieverSQS
+
+  ChPersisterSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 60
+      QueueName: !Join
+        - ''
+        - - !Ref ChPersisterSQSName
+          - '-'
+          - !Ref Env
+
+  ChPersisterSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt ChPersisterSQS.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ChPersisterSQS.Arn
+      Queues:
+        - !Ref ChPersisterSQS
+    DependsOn:
+      - ChPersisterSQS
+
+  ChProcessSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 120
+      QueueName: !Join
+        - ''
+        - - !Ref ChProcessSQSName
+          - '-'
+          - !Ref Env
+
+  ChProcessSQSPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: !Join ['', [!GetAtt ChProcessSQS.Arn, '/SQSDefaultPolicy']]
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ChProcessSQS.Arn
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ChProcessSQS.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn:
+                  - !Sub 'arn:aws:sns:us-east-1:578248469025:vcis-app-bulk-finished-topic-${Env}'
+      Queues:
+        - !Ref ChProcessSQS
+    DependsOn:
+      - ChProcessSQS
+
+
+  ### SNS Topics
+  BroadcastTriggerSNS:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: 'Broadcast Trigger'
+      TopicName: !Join
+        - ''
+        - - !Ref BroadcastTriggerSNSName
+          - '-'
+          - !Ref Env
+      Subscription:
+        - Endpoint: !Sub "arn:aws:lambda:us-east-1:578248469025:function:vcis-app-pod-ch-${Env}"
+          Protocol: lambda
+
+  BroadcastTriggerSNSPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2008-10-17"
+        Id: "__default_policy_ID"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - SNS:GetTopicAttributes
+              - SNS:SetTopicAttributes
+              - SNS:AddPermission
+              - SNS:RemovePermission
+              - SNS:DeleteTopic
+              - SNS:Subscribe
+              - SNS:ListSubscriptionsByTopic
+              - SNS:Publish
+              - SNS:Receive
+            Resource: !Join
+              - ''
+              - - !Ref BroadcastTriggerSNS
+                - '-'
+                - !Ref Env
+            Condition:
+              StringEquals:
+                AWS:SourceOwner: 578248469025
+      Topics:
+        - Ref: BroadcastTriggerSNS
+    DependsOn:
+      - BroadcastTriggerSNS
+  ChBroadcastSNS:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: 'Commercial Hierarchy Broadcast'
+      TopicName: !Join
+        - ''
+        - - !Ref ChBroadcastSNSName
+          - '-'
+          - !Ref Env
+      Subscription:
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-master-data-ch-grower-updater-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-ch-broadcaster-receiver-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-master-data-ch-season-closing-updater-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-master-data-ch-rol-partner-ex-updater-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-master-data-ch-season-closing-partner-ex-updater-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-ce-transfer-ch-${Env}"
+          Protocol: sqs
+        - Endpoint: !Sub "arn:aws:sqs:us-east-1:578248469025:vcis-app-master-data-ch-rol-updater-${Env}"
+          Protocol: sqs
+
+  ChBroadcastSNSPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2008-10-17"
+        Id: "__default_policy_ID"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - SNS:GetTopicAttributes
+              - SNS:SetTopicAttributes
+              - SNS:AddPermission
+              - SNS:RemovePermission
+              - SNS:DeleteTopic
+              - SNS:Subscribe
+              - SNS:ListSubscriptionsByTopic
+              - SNS:Publish
+              - SNS:Receive
+            Resource: !Join
+              - ''
+              - - !Ref ChBroadcastSNS
+                - '-'
+                - !Ref Env
+            Condition:
+              StringEquals:
+                AWS:SourceOwner: 578248469025
+      Topics:
+        - Ref: ChBroadcastSNS
+    DependsOn:
+      - ChBroadcastSNS
+
+Outputs:
+  ChDataRetrieverSQSOutput:
+    Description: "ChDataRetrieverSQS"
+    Value: !GetAtt ChDataRetrieverSQS.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ChDataRetrieverSQS'
+  ChPersisterSQSOutput:
+    Description: "ChPersisterSQS"
+    Value: !GetAtt ChPersisterSQS.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ChPersisterSQS'
+  ChProcessSQSOutput:
+    Description: "ChProcessSQS"
+    Value: !GetAtt ChProcessSQS.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ChProcessSQS'
+  BroadcastTriggerSNSOutput:
+    Description: "BroadcastTriggerSNS"
+    Value: !Ref BroadcastTriggerSNS
+    Export:
+      Name: !Sub '${AWS::StackName}-BroadcastTriggerSNS'
+  ChBroadcastSNSOutput:
+    Description: "ChBroadcastSNS"
+    Value: !Ref ChBroadcastSNS
+    Export:
+      Name: !Sub '${AWS::StackName}-ChBroadcastSNS'

@@ -1,0 +1,30 @@
+{
+  "name": "vcis-param-config-cdk",
+  "version": "0.1.0",
+  "bin": {
+    "vcis-param-config-cdk": "bin/vcis-param-config-cdk.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk"
+  },
+  "devDependencies": {
+    "@types/node": "^8.9.4",
+    "typescript": "^3.1.2",
+    "aws-cdk": "latest"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-ssm": "latest",
+    "@aws-cdk/cdk": "latest",
+    "@monsantoit/vcis-cdk-utils": "file:/Users/bbjang/Documents/IndustrySystemProjects/vcis-cdk-utils",
+    "source-map-support": "^0.5.9"
+  },
+  "peerDependencies": {
+    "@aws-cdk/cdk": "latest",
+    "@monsantoit/vcis-cdk-utils": "file:/Users/bbjang/Documents/IndustrySystemProjects/vcis-cdk-utils"
+  },
+  "env": {
+    "NODE_ENV": "non-prod"
+  }
+}

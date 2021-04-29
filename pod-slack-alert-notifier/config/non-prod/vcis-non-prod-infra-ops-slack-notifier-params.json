@@ -1,0 +1,14 @@
+[
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "non-prod"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/non-prod/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "WebhookSSMParameterName",
+    "ParameterValue": "/vcis/non-prod/infra/ops/slack-webhook"
+  }
+]

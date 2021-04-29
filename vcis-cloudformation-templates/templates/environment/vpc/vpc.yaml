@@ -1,0 +1,710 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  This templates deploys a VPC that has been customised for a VCIS environment.
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Description: 'Deployment Environment'
+    Type: String
+    AllowedValues:
+      - 'poc'
+      - 'dev'
+      - 'it'
+      - 'prod'
+    ConstraintDescription: 'Must be either poc, dev, it or prod.'
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  VpcCidrBlock:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: VPC CIDR Block
+
+  # Subnets CIDR Blocks Parameters
+  PublicSubnets:
+    Type: AWS::SSM::Parameter::Value<CommaDelimitedList>
+    Description: Public Subnets CIDR Blocks
+
+  PrivateSubnets:
+    Type: AWS::SSM::Parameter::Value<CommaDelimitedList>
+    Description: Private Subnets CIDR Blocks
+
+  RdsSubnets:
+    Type: AWS::SSM::Parameter::Value<CommaDelimitedList>
+    Description: RDS Subnets CIDR Blocks
+
+  # Bastion Parameters
+  BastionInstanceType:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Bastion Instance Type
+
+  BastionAMIId:
+    Type: String
+    Description: Bastion AMI Id
+
+  BastionHostKeyName:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::KeyPair::KeyName>
+    Description: Bastion Host Key Name
+
+  BastionIps:
+    Type: AWS::SSM::Parameter::Value<CommaDelimitedList>
+    Description: Bastion Instances IPs
+
+  InfraOpsSlackNotifierStackName:
+    Description: >-
+      The name of the stack that is exporting the Infra Operational Slack Notifier SNS Topic
+    Type: 'String'
+
+Resources:
+  VcisVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidrBlock
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-vpc-${Env}'
+  # Internet Gateway
+  VcisInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-igw-${Env}'
+
+  VcisGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VcisVpc
+      InternetGatewayId: !Ref VcisInternetGateway
+
+  # Primary Public Subnet
+  VcisPublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Select [0, !Ref PublicSubnets]
+      VpcId: !Ref VcisVpc
+      AvailabilityZone: !Select
+        - 0
+        - Fn::GetAZs: !Ref 'AWS::Region'
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-public-subnet01-${Env}'
+
+  VcisPublicSubnet1RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VcisVpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-public-route-tbl01-${Env}'
+
+  VcisPublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VcisPublicSubnet1RouteTable
+      SubnetId: !Ref VcisPublicSubnet1
+
+  VcisPublicSubnet1DefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref VcisPublicSubnet1RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref VcisInternetGateway
+    DependsOn: VcisGatewayAttachment
+
+  VcisPublicSubnet1EIP:
+    DependsOn: VcisGatewayAttachment
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  VcisPublicSubnet1NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt VcisPublicSubnet1EIP.AllocationId
+      SubnetId: !Ref VcisPublicSubnet1
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-nat-gw01-${Env}'
+
+  # Secondary Public Subnet
+  VcisPublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Select [1, !Ref PublicSubnets]
+      VpcId: !Ref VcisVpc
+      AvailabilityZone: !Select
+        - 1
+        - Fn::GetAZs: !Ref 'AWS::Region'
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-public-subnet02-${Env}'
+
+  VcisPublicSubnet2RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VcisVpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-public-route-tbl02-${Env}'
+
+  VcisPublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VcisPublicSubnet2RouteTable
+      SubnetId: !Ref VcisPublicSubnet2
+
+  VcisPublicSubnet2DefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref VcisPublicSubnet2RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref VcisInternetGateway
+    DependsOn:
+      - VcisGatewayAttachment
+
+  VcisPublicSubnet2EIP:
+    DependsOn: VcisGatewayAttachment
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  VcisPublicSubnet2NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt VcisPublicSubnet2EIP.AllocationId
+      SubnetId: !Ref VcisPublicSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-nat-gw-02-${Env}'
+
+  # Primary Private Subnet
+  VcisPrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Select [0, !Ref PrivateSubnets]
+      VpcId: !Ref VcisVpc
+      AvailabilityZone: !Select
+        - 0
+        - Fn::GetAZs: !Ref 'AWS::Region'
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-private-subnet01-${Env}'
+
+  VcisPrivateSubnet1RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VcisVpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-private-route-tbl01-${Env}'
+
+  VcisPrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VcisPrivateSubnet1RouteTable
+      SubnetId: !Ref VcisPrivateSubnet1
+
+  VcisPrivateSubnet1DefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref VcisPrivateSubnet1RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref VcisPublicSubnet1NatGateway
+
+  # Secondary Private Subnet
+  VcisPrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Select [1, !Ref PrivateSubnets]
+      VpcId: !Ref VcisVpc
+      AvailabilityZone: !Select
+        - 1
+        - Fn::GetAZs: !Ref 'AWS::Region'
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-private-subnet02-${Env}'
+
+  VcisPrivateSubnet2RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VcisVpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-private-route-tbl02-${Env}'
+
+  VcisPrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VcisPrivateSubnet2RouteTable
+      SubnetId: !Ref VcisPrivateSubnet2
+
+  VcisPrivateSubnet2DefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref VcisPrivateSubnet2RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref VcisPublicSubnet2NatGateway
+
+  # RDS Primary Subnet
+  VcisRdsSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Select [0, !Ref RdsSubnets]
+      VpcId: !Ref VcisVpc
+      AvailabilityZone: !Select
+        - 0
+        - Fn::GetAZs: !Ref 'AWS::Region'
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-rds-subnet01-${Env}'
+
+  VcisRdsSubnet1RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VcisVpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-rds-route-tbl01-${Env}'
+
+  VcisRdsSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VcisRdsSubnet1RouteTable
+      SubnetId: !Ref VcisRdsSubnet1
+
+  # RDS Secondary Subnet
+  VcisRdsSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: !Select [1, !Ref RdsSubnets]
+      VpcId: !Ref VcisVpc
+      AvailabilityZone: !Select
+        - 1
+        - Fn::GetAZs: !Ref 'AWS::Region'
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-rds-subnet02-${Env}'
+
+  VcisRdsSubnet2RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VcisVpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-rds-route-tbl02-${Env}'
+
+  VcisRdsSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref VcisRdsSubnet2RouteTable
+      SubnetId: !Ref VcisRdsSubnet2
+
+  # Bastion Security Group
+  VcisBastionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: >-
+        Bastion Host security group.
+        Other servers in this VPC should only accept SSH traffic from this group.
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default.
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp: !Select [0, !Ref BastionIps]
+          Description: Allow SSH access from central bastion primary instance.
+          FromPort: 22
+          IpProtocol: tcp
+          ToPort: 22
+        - CidrIp: !Select [1, !Ref BastionIps]
+          Description: Allow SSH access from central bastion secondary instance.
+          FromPort: 22
+          IpProtocol: tcp
+          ToPort: 22
+      VpcId: !Ref VcisVpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-bastion-sg-${Env}'
+
+  VcisPrimaryBastionInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref BastionAMIId
+      InstanceType: !Ref BastionInstanceType
+      KeyName: !Ref BastionHostKeyName
+      SecurityGroupIds:
+        - Fn::GetAtt:
+          - VcisBastionSecurityGroup
+          - GroupId
+      SubnetId: !Ref VcisPublicSubnet1
+      UserData:
+        Fn::Base64: "
+          \ #!/bin/bash -v
+          \ yum update -y --security
+          \ yum update -y aws*
+          \ echo #!/bin/sh > /etc/cron.daily/yum-security.cron
+          \ echo \"yum -y update yum\" >> /etc/cron.daily/yum-security.cron
+          \ echo \"yum --security -y update\" >> /etc/cron.daily/yum-security.cron
+          \ chmod +x /etc/cron.daily/yum-security.cron
+          \ # EOF
+          \ "
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-bastion-instance01-${Env}'
+
+  VcisPrimaryBastionInstanceEIP:
+    DependsOn: VcisGatewayAttachment
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref VcisPrimaryBastionInstance
+
+  VcisSecondaryBastionInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref BastionAMIId
+      InstanceType: !Ref BastionInstanceType
+      KeyName: !Ref BastionHostKeyName
+      SecurityGroupIds:
+        - Fn::GetAtt:
+          - VcisBastionSecurityGroup
+          - GroupId
+      SubnetId: !Ref VcisPublicSubnet2
+      UserData:
+        Fn::Base64: "
+          \ #!/bin/bash -v
+          \ yum update -y --security
+          \ yum update -y aws*
+          \ echo #!/bin/sh > /etc/cron.daily/yum-security.cron
+          \ echo \"yum -y update yum\" >> /etc/cron.daily/yum-security.cron
+          \ echo \"yum --security -y update\" >> /etc/cron.daily/yum-security.cron
+          \ chmod +x /etc/cron.daily/yum-security.cron
+          \ shutdown -P now
+          \ # EOF
+          \ "
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-bastion-instance02-${Env}'
+
+  VcisSecondaryBastionInstanceEIP:
+    DependsOn: VcisGatewayAttachment
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref VcisSecondaryBastionInstance
+
+  # VCIS Security Group
+  VcisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH access to EC2 instances.
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - Description: Allow SSH access from Primary Bastion Server - Security Group.
+          FromPort: 22
+          IpProtocol: tcp
+          SourceSecurityGroupId: !GetAtt VcisBastionSecurityGroup.GroupId
+          ToPort: 22
+      VpcId: !Ref VcisVpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-remote-access-sg-${Env}'
+
+  VcisRdsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow access to RDS instances.
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - Description: Allow Redis access from Bastion servers.
+          FromPort: 6379
+          IpProtocol: tcp
+          SourceSecurityGroupId: !GetAtt VcisBastionSecurityGroup.GroupId
+          ToPort: 6379
+        - Description: Allow Aurora access from Bastion servers.
+          FromPort: 3306
+          IpProtocol: tcp
+          SourceSecurityGroupId: !GetAtt VcisBastionSecurityGroup.GroupId
+          ToPort: 3306
+        - Description: Allow Postgres access from Bastion servers.
+          FromPort: 5432
+          IpProtocol: tcp
+          SourceSecurityGroupId: !GetAtt VcisBastionSecurityGroup.GroupId
+          ToPort: 5432
+        - CidrIp: !Select [0, !Ref PrivateSubnets]
+          Description: Allow Redis access from Private Subnet.
+          FromPort: 6379
+          IpProtocol: tcp
+          ToPort: 6379
+        - CidrIp: !Select [0, !Ref PrivateSubnets]
+          Description: Allow Aurora access from Private Subnet.
+          FromPort: 3306
+          IpProtocol: tcp
+          ToPort: 3306
+        - CidrIp: !Select [0, !Ref PrivateSubnets]
+          Description: Allow Postgres access from Private Subnet.
+          FromPort: 5432
+          IpProtocol: tcp
+          ToPort: 5432
+        - CidrIp: !Select [0, !Ref PrivateSubnets]
+          Description: Allow ElasticSearch access from Private Subnet.
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443          
+        - CidrIp: !Select [1, !Ref PrivateSubnets]
+          Description: Allow Redis access from Private Subnet.
+          FromPort: 6379
+          IpProtocol: tcp
+          ToPort: 6379
+        - CidrIp: !Select [1, !Ref PrivateSubnets]
+          Description: Allow Aurora access from Private Subnet.
+          FromPort: 3306
+          IpProtocol: tcp
+          ToPort: 3306
+        - CidrIp: !Select [1, !Ref PrivateSubnets]
+          Description: Allow Postgres access from Private Subnet.
+          FromPort: 5432
+          IpProtocol: tcp
+          ToPort: 5432
+        - CidrIp: !Select [1, !Ref PrivateSubnets]
+          Description: Allow ElasticSearch access from Private Subnet.
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443          
+      VpcId: !Ref VcisVpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-rds-sg-${Env}'
+
+  VcisLambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for lambdas. It gives access to internet to later access services outside VPC (such as SSM and Secrets Manager)
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: "-1"
+      VpcId: !Ref VcisVpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'vcis-lambda-sg-${Env}'
+
+  VPCUpdate:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: >-
+        A CloudWatch Event Rule that detects changes to network configuration
+        and publishes change events to an SNS topic for notification.
+      State: ENABLED
+      Targets:
+        - Arn:
+            Fn::ImportValue: !Sub "${InfraOpsSlackNotifierStackName}-SNSTopicArn"
+          Id: InfraOpsSlackNotifierStackName
+      EventPattern:
+        detail-type:
+          - AWS API Call via CloudTrail
+        resources: [
+            !Join ['', [!Sub 'arn:aws:ec2:*:${AWS::AccountId}:vpc/', !Ref VcisVpc]]
+          ]
+        detail:
+          eventSource:
+            - ec2.amazonaws.com
+          eventName:
+            - CreateVpcPeeringConnection
+            - DeleteVpcPeeringConnection
+
+  RouteTableUpdate:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: >-
+        A CloudWatch Event Rule that detects changes to network configuration
+        and publishes change events to an SNS topic for notification.
+      State: ENABLED
+      Targets:
+        - Arn:
+            Fn::ImportValue: !Sub "${InfraOpsSlackNotifierStackName}-SNSTopicArn"
+          Id: InfraOpsSlackNotifierStackName
+      EventPattern:
+        detail-type:
+          - AWS API Call via CloudTrail
+        resources: [
+            !Join ['', [!Sub 'arn:aws:ec2:*:${AWS::AccountId}:route-table/', !Ref VcisPublicSubnet1RouteTable]],
+            !Join ['', [!Sub 'arn:aws:ec2:*:${AWS::AccountId}:route-table/', !Ref VcisPublicSubnet2RouteTable]],
+            !Join ['', [!Sub 'arn:aws:ec2:*:${AWS::AccountId}:route-table/', !Ref VcisPrivateSubnet1RouteTable]],
+            !Join ['', [!Sub 'arn:aws:ec2:*:${AWS::AccountId}:route-table/', !Ref VcisPrivateSubnet2RouteTable]],
+            !Join ['', [!Sub 'arn:aws:ec2:*:${AWS::AccountId}:route-table/', !Ref VcisRdsSubnet1RouteTable]],
+            !Join ['', [!Sub 'arn:aws:ec2:*:${AWS::AccountId}:route-table/', !Ref VcisRdsSubnet2RouteTable]]
+          ]
+        detail:
+          eventSource:
+            - ec2.amazonaws.com
+          eventName:
+            - CreateRoute
+            - DeleteRoute
+            - DeleteRouteTable
+            - ReplaceRoute
+
+  SecurityGroupChanges:
+      Type: 'AWS::Events::Rule'
+      Properties:
+        Description: >-
+          A CloudWatch Event Rule that detects changes to security groups and
+          publishes change events to an SNS topic for notification.
+        State: ENABLED
+        Targets:
+          - Arn:
+              Fn::ImportValue: !Sub "${InfraOpsSlackNotifierStackName}-SNSTopicArn"
+            Id: InfraOpsSlackNotifierStackName
+        EventPattern:
+          detail-type:
+            - AWS API Call via CloudTrail
+          resources: [
+              !Join ['',[!Sub 'arn:aws:ec2:*:${AWS::AccountId}:security-group/', !Ref VcisBastionSecurityGroup]],
+              !Join ['',[!Sub 'arn:aws:ec2:*:${AWS::AccountId}:security-group/', !Ref VcisSecurityGroup]],
+              !Join ['',[!Sub 'arn:aws:ec2:*:${AWS::AccountId}:security-group/', !Ref VcisRdsSecurityGroup]],
+              !Join ['',[!Sub 'arn:aws:ec2:*:${AWS::AccountId}:security-group/', !Ref VcisLambdaSecurityGroup]],
+            ]
+          detail:
+            eventSource:
+              - ec2.amazonaws.com
+            eventName:
+              - AuthorizeSecurityGroupIngress
+              - AuthorizeSecurityGroupEgress
+              - RevokeSecurityGroupIngress
+              - RevokeSecurityGroupEgress
+              - DeleteSecurityGroup
+
+Outputs:
+  VPCIDOutput:
+    Description: VPCID
+    Value: !Ref VcisVpc
+    Export:
+      Name: !Sub '${AWS::StackName}-VpcId'
+
+  VPCCIDROutput:
+    Description: The CIDR range for the overall VPC
+    Value: !GetAtt VcisVpc.CidrBlock
+    Export:
+      Name: !Sub '${AWS::StackName}-VpcCidr'
+
+  AvailabilityZone1Output:
+    Description: AvailabilityZone1
+    Value: !Select
+      - 0
+      - Fn::GetAZs: !Ref 'AWS::Region'
+    Export:
+      Name: !Sub '${AWS::StackName}-AvailabilityZone1'
+
+  AvailabilityZone2Output:
+    Description: AvailabilityZone2
+    Value: !Select
+      - 1
+      - Fn::GetAZs: !Ref 'AWS::Region'
+    Export:
+      Name: !Sub '${AWS::StackName}-AvailabilityZone2'
+
+  BastionHostKeyNameOutput:
+    Description: Key name used for the VPC's bastion hosts
+    Value: !Ref BastionHostKeyName
+    Export:
+      Name: !Sub '${AWS::StackName}-BastionHostKeyName'
+
+  BastionSecurityGroupOutput:
+    Description: Bastion Host security group. Other servers in this VPC should only accept SSH traffic from this group.
+    Value: !Ref VcisBastionSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-BastionSecurityGroup'
+
+  PrimaryBastionIPOutput:
+    Description: Primary Bastion Host IP
+    Value: !Ref VcisPrimaryBastionInstanceEIP
+    Export:
+      Name: !Sub '${AWS::StackName}-PrimaryBastionIP'
+
+  PrimaryBastionDNSOutput:
+    Description: Primary Bastion DNS entry
+    Value: !GetAtt VcisPrimaryBastionInstance.PublicDnsName
+    Export:
+      Name: !Sub '${AWS::StackName}-PrimaryBastionDNS'
+
+  SecondaryBastionIPOutput:
+    Description: Secondary Bastion Host IP
+    Value: !Ref VcisSecondaryBastionInstanceEIP
+    Export:
+      Name: !Sub '${AWS::StackName}-SecondaryBastionIP'
+
+  SecondaryBastionDNSOutput:
+    Description: Secondary Bastion Host DNS entry
+    Value: !GetAtt VcisSecondaryBastionInstance.PublicDnsName
+    Export:
+      Name: !Sub '${AWS::StackName}-SecondaryBastionDNS'
+
+  PublicSubnet1Output:
+    Description: PublicSubnet1
+    Value: !Ref VcisPublicSubnet1
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnet1'
+
+  PublicSubnet2Output:
+    Description: PublicSubnet2
+    Value: !Ref VcisPublicSubnet2
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicSubnet2'
+
+  PrivateSubnet1Output:
+    Description: PrivateSubnet1
+    Value: !Ref VcisPrivateSubnet1
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnet1'
+
+  PrivateSubnet2Output:
+    Description: PrivateSubnet2
+    Value: !Ref VcisPrivateSubnet2
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnet2'
+
+  RdsSubnet1Output:
+    Description: RdsSubnet1
+    Value: !Ref VcisRdsSubnet1
+    Export:
+      Name: !Sub '${AWS::StackName}-RdsSubnet1'
+
+  RdsSubnet2Output:
+    Description: RdsSubnet2
+    Value: !Ref VcisRdsSubnet2
+    Export:
+      Name: !Sub '${AWS::StackName}-RdsSubnet2'
+
+  VcisRdsSecurityGroupOutput:
+    Description: VcisRdsSecurityGroup
+    Value: !Ref VcisRdsSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-VcisRdsSecurityGroup'
+
+  VcisLambdaSecurityGroupOutput:
+    Description: VcisLambdaSecurityGroup
+    Value: !Ref VcisLambdaSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-VcisLambdaSecurityGroup'
+
+  VcisSecurityGroupOutput:
+    Description: VcisSecurityGroup
+    Value: !Ref VcisSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-VcisSecurityGroup'

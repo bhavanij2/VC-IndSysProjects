@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VCIS SNS Topic Metrics'
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  TopicName:
+    Type: String
+    Description: The sns topic name
+  Env:
+    Type: String
+    AllowedValues:
+      - dev
+      - it
+      - prod
+      - poc
+    ConstraintDescription: Environment values must be dev, it, prod or poc
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+  Threshold:
+    Type: Number
+    Description: The value to compare with the specified statistic
+    MinValue: 0
+  Period:
+    Type: Number
+    Description: The period, in seconds, over which the statistic is applied
+    Default: 300
+  LambdaSubscription:
+    Type: String
+    Description: An AWS Lambda function that can receive notifications from Amazon SNS
+
+Resources:
+  SNSAlarmNotificationSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${TopicName}-${Env}-SnsAlarmNotificationTopic'
+  MySubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref LambdaSubscription
+      Protocol: lambda
+      TopicArn:
+        Ref: SNSAlarmNotificationSNSTopic
+
+  NumberOfMessagesPublishedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Ref: SNSAlarmNotificationSNSTopic
+      AlarmDescription: !Sub '${TopicName}-${Env} Number of Messages Publish Alarm'
+      AlarmName: !Sub '${TopicName}-${Env}-NumberOfMessagesPublished'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: 'NumberOfMessagesPublished'
+      Namespace: 'AWS/SNS'
+      Period:
+        !Ref Period
+      Statistic: Sum
+      Threshold:
+        !Ref Threshold
+      Dimensions:
+        [
+         {
+            "Name": "TopicName",
+            "Value": !Ref TopicName
+         }
+        ]
+
+  NumberOfNotificationsFailedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Ref: SNSAlarmNotificationSNSTopic
+      AlarmDescription: !Sub '${TopicName}-${Env} The number of messages that Amazon SNS failed to deliver'
+      AlarmName: !Sub '${TopicName}-${Env}-NumberOfNotificationsFailed'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: 'NumberOfNotificationsFailed'
+      Namespace: 'AWS/SNS'
+      Period:
+        !Ref Period
+      Statistic: Sum
+      Threshold:
+        !Ref Threshold
+      Dimensions:
+        [
+         {
+            "Name": "TopicName",
+            "Value": !Ref TopicName
+         }
+        ]
+
+  NumberOfNotificationsFilteredOutAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - Ref: SNSAlarmNotificationSNSTopic
+      AlarmDescription: !Sub '${TopicName}-${Env} The number of messages that were rejected by subscription filter policies. A filter policy rejects a message when the message attributes don't match the policy attributes'
+      AlarmName: !Sub '${TopicName}-${Env}-NumberOfNotificationsFilteredOut'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: 'NumberOfNotificationsFilteredOut'
+      Namespace: 'AWS/SNS'
+      Period:
+        !Ref Period
+      Statistic: Sum
+      Threshold:
+        !Ref Threshold
+      Dimensions:
+        [
+         {
+            "Name": "TopicName",
+            "Value": !Ref TopicName
+         }
+        ]

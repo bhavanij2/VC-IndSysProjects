@@ -1,0 +1,116 @@
+{
+  "tagsConfig": {
+    "non-prod": [
+      {
+        "name": "mon:cost-center",
+        "parameterPath": "/vcis/non-prod/infra/tags/cost-center"
+      },
+      {
+        "name": "mon:data-classification",
+        "parameterPath": "/vcis/non-prod/infra/tags/data-classification"
+      },
+      {
+        "name": "mon:env",
+        "parameterPath": "/vcis/non-prod/infra/tags/env"
+      },
+      {
+        "name": "mon:owner",
+        "parameterPath": "/vcis/non-prod/infra/tags/owner"
+      },
+      {
+        "name": "mon:project",
+        "parameterPath": "/vcis/non-prod/infra/tags/project"
+      },
+      {
+        "name": "mon:regulated",
+        "parameterPath": "/vcis/non-prod/infra/tags/regulated"
+      }
+    ],
+    "poc": [
+      {
+        "name": "mon:cost-center",
+        "parameterPath": "/vcis/poc/infra/tags/cost-center"
+      },
+      {
+        "name": "mon:data-classification",
+        "parameterPath": "/vcis/poc/infra/tags/data-classification"
+      },
+      {
+        "name": "mon:env",
+        "parameterPath": "/vcis/poc/infra/tags/env"
+      },
+      {
+        "name": "mon:owner",
+        "parameterPath": "/vcis/poc/infra/tags/owner"
+      },
+      {
+        "name": "mon:project",
+        "parameterPath": "/vcis/poc/infra/tags/project"
+      },
+      {
+        "name": "mon:regulated",
+        "parameterPath": "/vcis/poc/infra/tags/regulated"
+      },
+      {
+        "name": "mon:project-module",
+        "parameterPath": "/vcis/poc/infra/tags/project-module"
+      }
+    ],
+    "dev": [
+      {
+        "name": "mon:cost-center",
+        "parameterPath": "/vcis/dev/infra/tags/cost-center"
+      },
+      {
+        "name": "mon:data-classification",
+        "parameterPath": "/vcis/dev/infra/tags/data-classification"
+      },
+      {
+        "name": "mon:env",
+        "parameterPath": "/vcis/dev/infra/tags/env"
+      },
+      {
+        "name": "mon:owner",
+        "parameterPath": "/vcis/dev/infra/tags/owner"
+      },
+      {
+        "name": "mon:project",
+        "parameterPath": "/vcis/dev/infra/tags/project"
+      },
+      {
+        "name": "mon:regulated",
+        "parameterPath": "/vcis/dev/infra/tags/regulated"
+      },
+      {
+        "name": "mon:project-module",
+        "parameterPath": "/vcis/dev/infra/tags/project-module"
+      }
+    ],
+    "prod": [
+      {
+        "name": "mon:cost-center",
+        "parameterPath": "/vcis/prod/infra/tags/cost-center"
+      },
+      {
+        "name": "mon:data-classification",
+        "parameterPath": "/vcis/prod/infra/tags/data-classification"
+      },
+      {
+        "name": "mon:env",
+        "parameterPath": "/vcis/prod/infra/tags/env"
+      },
+      {
+        "name": "mon:owner",
+        "parameterPath": "/vcis/prod/infra/tags/owner"
+      },
+      {
+        "name": "mon:project",
+        "parameterPath": "/vcis/prod/infra/tags/project"
+      },
+      {
+        "name": "mon:regulated",
+        "parameterPath": "/vcis/prod/infra/tags/regulated"
+      }
+    ]
+  }
+}

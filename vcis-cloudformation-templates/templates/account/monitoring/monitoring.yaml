@@ -1,0 +1,215 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  This template creates monitors that are useful for reliability and security monitoring in an
+  environment. Generally we are trying to apply the guidelines provided by:
+  https://d1.awsstatic.com/whitepapers/architecture/AWS-Reliability-Pillar.pdf
+  https://d1.awsstatic.com/whitepapers/architecture/AWS-Security-Pillar.pdf
+Parameters:
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  InfraOpsSlackNotifierStackName:
+    Description: >-
+      The name of the stack that is exporting the Infra Operational Slack Notifier SNS Topic
+    Type: 'String'
+
+  InfraSecuritySlackNotifierStackName:
+    Description: >-
+      The name of the stack that is exporting the Infra Security Slack Notifier SNS Topic
+    Type: 'String'
+
+  Env:
+    Description: >-
+      A value used to describe the environment you will deploy to. This value will be used to get values
+      from SSM Parameter Store. Keys in Parameter store should begin with: /vcis/environment.
+    Type: String
+    AllowedValues:
+      # non-prod should be used only for account level infra resources (for non-prod account)
+      - non-prod
+      - prod
+    ConstraintDescription: Must be a non-prod or prod.
+
+Transform: [VcisCommonTagsMacro]
+
+Resources:
+  TrustedAdvisorRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: >-
+        A CloudWatch Event Rule that detects failed or warm trusted advisor events and forwards the events to an SNS topic.
+      State: ENABLED
+      Targets:
+        - Arn:
+            Fn::ImportValue: !Sub "${InfraOpsSlackNotifierStackName}-SNSTopicArn"
+          Id: InfraOperationalTopic
+      EventPattern:
+        source:
+          - aws.trustedadvisor
+        detail-type:
+          - Trusted Advisor Check Item Refresh Notification
+        detail:
+          status:
+            - ERROR
+            - WARN
+
+  HealthEvents:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: >-
+        A CloudWatch Event Rule that triggers on changes in the status of AWS
+        Personal Health Dashboard (AWS Health) and forwards the events to an SNS
+        topic.
+      State: ENABLED
+      Targets:
+        - Arn:
+            Fn::ImportValue: !Sub "${InfraOpsSlackNotifierStackName}-SNSTopicArn"
+          Id: InfraOperationalTopic
+      EventPattern:
+        detail-type:
+          - AWS Health Event
+        source:
+          - aws.health
+
+  SecurityGroupGlobalChanges:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: >-
+        A CloudWatch Event Rule that detects changes to security groups and
+        publishes change events to an SNS topic for notification.
+      State: ENABLED
+      Targets:
+        - Arn:
+            Fn::ImportValue: !Sub "${InfraOpsSlackNotifierStackName}-SNSTopicArn"
+          Id: InfraOperationalTopic
+        - Arn:
+            Fn::ImportValue: !Sub "${InfraSecuritySlackNotifierStackName}-SNSTopicArn"
+          Id: InfraSecurityTopic
+      EventPattern:
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - ec2.amazonaws.com
+          eventName:
+            - CreateSecurityGroup
+
+  NetworkACLChanges:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: >-
+        A CloudWatch Event Rule that detects changes to network ACLs and
+        publishes change events to an SNS topic for notification.
+      State: ENABLED
+      Targets:
+        - Arn:
+            Fn::ImportValue: !Sub "${InfraOpsSlackNotifierStackName}-SNSTopicArn"
+          Id: InfraOperationalTopic
+        - Arn:
+            Fn::ImportValue: !Sub "${InfraSecuritySlackNotifierStackName}-SNSTopicArn"
+          Id: InfraSecurityTopic
+      EventPattern:
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - ec2.amazonaws.com
+          eventName:
+            - CreateNetworkAcl
+            - CreateNetworkAclEntry
+            - DeleteNetworkAcl
+            - DeleteNetworkAclEntry
+            - ReplaceNetworkAclEntry
+            - ReplaceNetworkAclAssociation
+
+  NetworkChanges:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: >-
+        A CloudWatch Event Rule that detects changes to network configuration
+        and publishes change events to an SNS topic for notification.
+      State: ENABLED
+      Targets:
+        - Arn:
+            Fn::ImportValue: !Sub "${InfraOpsSlackNotifierStackName}-SNSTopicArn"
+          Id: InfraOperationalTopic
+        - Arn:
+            Fn::ImportValue: !Sub "${InfraSecuritySlackNotifierStackName}-SNSTopicArn"
+          Id: InfraSecurityTopic
+      EventPattern:
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - ec2.amazonaws.com
+          eventName:
+            - AttachInternetGateway
+            - AssociateRouteTable
+            - CreateCustomerGateway
+            - CreateInternetGateway
+            - CreateRouteTable
+            - DetachInternetGateway
+            - DisassociateRouteTable
+            - ReplaceRouteTableAssociation
+            - DeleteCustomerGateway
+            - DeleteInternetGateway
+            - DeleteDhcpOptions
+
+
+  CodePipelineFailedActions:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: >-
+        A CloudWatch Event Rule that detects failed codepipeline actions
+        and publishes change events to an SNS topic for notification.
+      State: ENABLED
+      Targets:
+        - Arn:
+            Fn::ImportValue: !Sub "${InfraOpsSlackNotifierStackName}-SNSTopicArn"
+          Id: InfraOperationalTopic
+      EventPattern:
+        source:
+          - aws.codepipeline
+        detail-type:
+          - CodePipeline Action Execution State Change
+        detail:
+          state:
+            - FAILED
+            - CANCELED
+        resources:
+          - prefix: 'arn:aws:codepipeline:${AWS::RegionId}:${AWS::AccountId}:vcis-non-prod-infra-'
+          - prefix: 'arn:aws:codepipeline:${AWS::RegionId}:${AWS::AccountId}:vcis-dev-infra-'
+          - prefix: 'arn:aws:codepipeline:${AWS::RegionId}:${AWS::AccountId}:vcis-it-infra-'
+          - prefix: 'arn:aws:codepipeline:${AWS::RegionId}:${AWS::AccountId}:vcis-prod-infra-'
+
+  VPCUpdate:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: >-
+        A CloudWatch Event Rule that detects changes to network configuration
+        and publishes change events to an SNS topic for notification.
+      State: ENABLED
+      Targets:
+        - Arn:
+            Fn::ImportValue: !Sub "${InfraOpsSlackNotifierStackName}-SNSTopicArn"
+          Id: InfraOperationalTopic
+        - Arn:
+            Fn::ImportValue: !Sub "${InfraSecuritySlackNotifierStackName}-SNSTopicArn"
+          Id: InfraSecurityTopic
+      EventPattern:
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - ec2.amazonaws.com
+          eventName:
+            - CreateVpc
+            - DeleteVpc
+            - AssociateVpcCidrBlock
+            - DisassociateVpcCidrBlock
+            - CreateSubnet
+            - DeleteSubnet
+            - AssociateSubnetCidrBlock
+            - DisassociateSubnetCidrBlock
+            - ModifySubnetAttribute
+

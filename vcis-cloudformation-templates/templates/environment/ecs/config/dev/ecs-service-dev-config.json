@@ -1,0 +1,46 @@
+[
+  {
+    "ParameterKey": "Env",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "ProjectModuleTag",
+    "ParameterValue": "/vcis/dev/infra/tags/project-module-value-capture-industry-system"
+  },
+  {
+    "ParameterKey": "VpcId",
+    "ParameterValue": "/vcis/dev/infra/vpc/output/vpc-id"
+  },
+  {
+    "ParameterKey": "PrivateSubnets",
+    "ParameterValue": "/vcis/dev/infra/vpc/output/private-subnets"
+  },
+  {
+    "ParameterKey": "ECSClusterName",
+    "ParameterValue": "/vcis/dev/infra/ecs/output/cluster-name"
+  },
+  {
+    "ParameterKey": "ServiceName",
+    "ParameterValue": "vcis-todos-service"
+  },
+  {
+    "ParameterKey": "AppImage",
+    "ParameterValue": "578248469025.dkr.ecr.us-east-1.amazonaws.com/vcis-todos-service:poc"
+  },
+  {
+    "ParameterKey": "LoadBalancerListener",
+    "ParameterValue": "/vcis/dev/infra/alb/output/alb-listener"
+  },
+  {
+    "ParameterKey": "LoadBalancerSg",
+    "ParameterValue": "/vcis/dev/infra/alb/output/alb-security-group"
+  },
+  {
+    "ParameterKey": "LoadBalancerPathPattern",
+    "ParameterValue": "/*"
+  },
+  {
+    "ParameterKey": "LoadBalancerPriority",
+    "ParameterValue": "1"
+  }
+]

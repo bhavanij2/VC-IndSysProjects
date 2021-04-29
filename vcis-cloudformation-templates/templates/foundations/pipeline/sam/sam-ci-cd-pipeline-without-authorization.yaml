@@ -1,0 +1,474 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  AWS CloudFormation Template for Continuous Delivery: This template
+  builds an AWS CodePipeline pipeline that implements a continuous delivery release
+  process for Lambda deployments.
+
+Parameters:
+  S3SourceKey:
+    Description: 'S3 Source Object Name'
+    Type: String
+
+  WorkloadName:
+    Description: 'Workload Name'
+    Type: String
+
+  Env:
+    Description: 'Environment in which resources should be deployed'
+    Type: String
+    AllowedValues:
+      - non-prod
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either non-prod, dev, it or prod
+
+
+  CodeBuildDockerImage:
+    Description: 'Docker Image to build the project.'
+    Type: String
+    AllowedValues:
+      - aws/codebuild/standard:2.0
+      - aws/codebuild/standard:3.0
+      - aws/codebuild/standard:4.0
+    Default: aws/codebuild/standard:2.0
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  # Params with Default values
+  WorkLoadAccountLevelInputParamsStackName:
+    Description: >-
+        The name of the stack name that is exporting the pipeline workload inputs
+    Type: String
+
+  BuildSpecPath:
+    Description: >-
+      Path, relative to the repository file structure, for the Lambda buildspec file.
+    Type: String
+    Default: buildspec.yaml
+
+  CustomTags:
+    Type: String
+    Description: "Custom tags to apply on template"
+    Default: ''
+
+  CfnStackEraserStackName:
+    Type: String
+    Description: 'Cfn stack eraser custom resource stack'
+    Default: 'vcis-cloudformation-custom-resources'
+
+Conditions:
+  IsProd: !Equals [ !Ref Env, "prod" ]
+
+Transform: [VcisCommonTagsMacro]
+
+Resources:
+
+  CodeBuildPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: "Policy for CodeBuild Service Role"
+      Path: "/"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:PutObject
+              - s3:CreateMultipartUpload
+            Resource:
+                  - !Join
+                    - ""
+                    - - 'arn:aws:s3:::'
+                      - Fn::ImportValue: !Sub "${WorkLoadAccountLevelInputParamsStackName}-ArtifactBucket"
+                      - '/*'
+                  - !Join
+                    - ""
+                    - - 'arn:aws:s3:::'
+                      - Fn::ImportValue: !Sub "${WorkLoadAccountLevelInputParamsStackName}-SourceBucket"
+                      - '/*'
+          - Effect: Allow
+            Action: ssm:GetParameters
+            Resource: '*'
+
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+      Path: /
+      ManagedPolicyArns:
+        - !Ref CodeBuildPolicy
+
+  SAMCloudFormationExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          Action: 'sts:AssumeRole'
+          Effect: Allow
+          Principal:
+            Service: cloudformation.amazonaws.com
+      Path: /
+      Policies:
+        - PolicyName: "SAMCloudFormationExecutionPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - apigateway:*
+                  - codedeploy:*
+                  - lambda:*
+                  - cloudformation:CreateChangeSet
+                  - iam:GetRole
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:PutRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:PassRole
+                  - iam:GetRolePolicy
+                  - iam:CreatePolicy
+                  - iam:DeletePolicy
+                  - s3:*
+                  - ssm:GetParameter*
+                  - ssm:PutParameter
+                  - ssm:DescribeParameters
+                  - ec2:*
+                  - sqs:*
+                  - cloudfront:CreateCloudFrontOriginAccessIdentity
+                  - route53:GetHostedZone
+                  - route53:ChangeResourceRecordSets 
+                  - route53:GetChange
+                  - route53:ListResourceRecordSets
+                  - events:PutRule
+                  - events:RemoveTargets
+                  - events:DeleteRule
+                  - events:DescribeRule
+                  - events:PutTargets
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - cloudfront:CreateDistribution
+                  - cloudfront:DeleteDistribution
+                  - cloudfront:GetDistribution
+                  - cloudfront:UpdateDistribution
+                  - cloudfront:TagResource
+                Resource: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/*
+              - Effect: "Allow"
+                Action:
+                  - cloudfront:GetCloudFrontOriginAccessIdentityConfig
+                  - cloudfront:GetCloudFrontOriginAccessIdentity
+                  - cloudfront:UpdateCloudFrontOriginAccessIdentity
+                  - cloudfront:DeleteCloudFrontOriginAccessIdentity
+                Resource: !Sub "arn:aws:cloudfront::${AWS::AccountId}:origin-access-identity/*"
+              - Effect: "Allow"
+                Action:
+                  - iam:CreateServiceLinkedRole
+                  - iam:UpdateRoleDescription
+                  - iam:DeleteServiceLinkedRole
+                  - iam:GetServiceLinkedRoleDeletionStatus
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/*"
+              - Effect: "Allow"
+                Action:
+                  - servicecatalog:AssociatePrincipalWithPortfolio
+                  - servicecatalog:DisassociatePrincipalFromPortfolio 
+                Resource: !Sub "arn:aws:catalog:*:${AWS::AccountId}:portfolio/*"
+                
+  CodePipelinePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: "Policy for CodePipeline Service Role"
+      Path: "/"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - ssm:Get*
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - ec2:*
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - iam:PassRole
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+              - lambda:ListFunctions
+              - lambda:InvokeAsyc
+            Resource: !Sub arn:aws:lambda:*:${AWS::AccountId}:function:vcis*
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:GetObjectVersion
+              - s3:GetBucketVersioning
+            Resource:
+              - !Join
+                    - ""
+                    - - 'arn:aws:s3:::'
+                      - Fn::ImportValue: !Sub "${WorkLoadAccountLevelInputParamsStackName}-ArtifactBucket"
+              - !Join
+                    - ""
+                    - - 'arn:aws:s3:::'
+                      - Fn::ImportValue: !Sub "${WorkLoadAccountLevelInputParamsStackName}-ArtifactBucket"
+                      - '/*'
+          - Effect: Allow
+            Action:
+              - s3:Get*
+              - s3:List*
+            Resource:
+              - !Join
+                    - ""
+                    - - 'arn:aws:s3:::'
+                      - Fn::ImportValue: !Sub "${WorkLoadAccountLevelInputParamsStackName}-SourceBucket"
+              - !Join
+                    - ""
+                    - - 'arn:aws:s3:::'
+                      - Fn::ImportValue: !Sub "${WorkLoadAccountLevelInputParamsStackName}-SourceBucket"
+                      - '/*'
+          - Effect: Allow
+            Action:
+              - codebuild:StartBuild
+              - codebuild:BatchGetBuilds
+            Resource: !GetAtt CodeBuild.Arn
+          - Effect: Allow
+            Action:
+              - cloudformation:CreateStack
+              - cloudformation:DescribeStacks
+              - cloudformation:DeleteStack
+              - cloudformation:UpdateStack
+              - cloudformation:CreateChangeSet
+              - cloudformation:ExecuteChangeSet
+              - cloudformation:DeleteChangeSet
+              - cloudformation:DescribeChangeSet
+              - cloudformation:SetStackPolicy
+            Resource:
+              - !Sub arn:aws:cloudformation:*:${AWS::AccountId}:*/vcis*
+          - Effect: Allow
+            Action:
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeSubnets
+              - ec2:DescribeVpcs
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - sns:Publish
+            Resource: 
+              - !Sub arn:aws:sns:us-east-1:${AWS::AccountId}:vcis-*
+
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+      Path: /
+      ManagedPolicyArns:
+        - !Ref CodePipelinePolicy
+
+  CodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: CODEPIPELINE
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: !Ref BuildSpecPath
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: !Ref CodeBuildDockerImage
+        Type: LINUX_CONTAINER
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: ENV
+            Type: PLAINTEXT
+            Value: !Ref Env
+          - Name: WORKLOAD
+            Type: PLAINTEXT
+            Value: !Ref WorkloadName
+          - Name: BUILD_OUTPUT_BUCKET
+            Type: PLAINTEXT
+            Value:
+              Fn::ImportValue: !Sub "${WorkLoadAccountLevelInputParamsStackName}-ArtifactBucket"
+      ServiceRole: !Ref CodeBuildServiceRole
+
+  CfnWorkloadStackEraser:
+    Type: 'Custom::CfnStackEraser'
+    Version: '1.0'
+    Properties:
+      ServiceToken:
+        Fn::ImportValue: !Sub "${CfnStackEraserStackName}-CfnStackEraserFunctionArn"
+      StackName: !Sub '${WorkloadName}-${Env}'
+      RoleArn:
+        Fn::ImportValue: !Sub "${CfnStackEraserStackName}-CfnStackEraserExecutionRoleArn"
+
+
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    DependsOn:
+      - CfnWorkloadStackEraser
+    Properties:
+      RoleArn: !GetAtt CodePipelineServiceRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location:
+          Fn::ImportValue: !Sub "${WorkLoadAccountLevelInputParamsStackName}-ArtifactBucket"
+      DisableInboundStageTransitions: []
+      Stages:
+        - Name: SourceStage
+          Actions:
+            - Name: S3Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: S3
+                Version: '1'
+              Configuration:
+                S3Bucket:
+                  Fn::ImportValue: !Sub "${WorkLoadAccountLevelInputParamsStackName}-SourceBucket"
+                S3ObjectKey: !Ref S3SourceKey
+                PollForSourceChanges: false
+              OutputArtifacts:
+                - Name: SourceArtifacts
+              RunOrder: 1
+        - Name: BuildStage
+          Actions:
+            - Name: PackageArtifact
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              InputArtifacts:
+                - Name: SourceArtifacts
+              Configuration:
+                ProjectName: !Ref CodeBuild
+              OutputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+        - Name: CreateChangeSet
+          Actions:
+            - Name: CreateChangeSet
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: "1"
+              Configuration:
+                ActionMode: CHANGE_SET_REPLACE
+                RoleArn: !GetAtt SAMCloudFormationExecutionRole.Arn
+                StackName: !Sub '${WorkloadName}-${Env}'
+                ChangeSetName: !Sub '${WorkloadName}-${Env}-change-set'
+                TemplatePath: BuildOutput::sam-output.yaml
+                TemplateConfiguration: BuildOutput::sam-config.json
+                Capabilities: CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
+              InputArtifacts:
+                - Name: BuildOutput
+              OutputArtifacts:
+                - Name: ChangeSetOutput
+              RunOrder: 1
+
+        - Name: DeployStage
+          Actions:
+            - Name: ExecuteChangeSet
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: "1"
+              Configuration:
+                ActionMode: CHANGE_SET_EXECUTE
+                RoleArn: !GetAtt SAMCloudFormationExecutionRole.Arn
+                StackName: !Sub '${WorkloadName}-${Env}'
+                ChangeSetName: !Sub '${WorkloadName}-${Env}-change-set'
+              InputArtifacts:
+                - Name: ChangeSetOutput
+              RunOrder: 1
+
+  AmazonCloudWatchEventRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - events.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      Policies:
+        -
+          PolicyName: cwe-pipeline-execution
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: codepipeline:StartPipelineExecution
+                Resource: !Join [ '', [ 'arn:aws:codepipeline:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId', ':', !Ref CodePipeline ] ]
+
+
+  AmazonCloudWatchEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - 'AWS API Call via CloudTrail'
+        detail:
+          eventSource:
+            - s3.amazonaws.com
+          eventName:
+            - CopyObject
+            - PutObject
+            - CompleteMultipartUpload
+          requestParameters:
+            bucketName:
+              - Fn::ImportValue: !Sub "${WorkLoadAccountLevelInputParamsStackName}-SourceBucket"
+            key:
+              - !Ref S3SourceKey
+      Targets:
+        -
+          Arn:
+            !Join [ '', [ 'arn:aws:codepipeline:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId', ':', !Ref CodePipeline ] ]
+          RoleArn: !GetAtt AmazonCloudWatchEventRole.Arn
+          Id: codepipeline-lambdaPipeline
+          
+Outputs:
+  PipelineUrl:
+    Description: 'Lambda CI/CD CodePipeline'
+    Value:  !Join ["", [!Sub 'https://console.aws.amazon.com/codepipeline/home?region=${AWS::Region}#/view/', !Ref CodePipeline] ]

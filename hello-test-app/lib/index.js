@@ -1,0 +1,5 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var hello_test_app_stack_1 = require("./hello-test-app-stack");
+exports.HelloTestAppStack = hello_test_app_stack_1.HelloTestAppStack;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJpbmRleC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOztBQUFBLCtEQUEyRDtBQUFsRCxtREFBQSxpQkFBaUIsQ0FBQSIsInNvdXJjZXNDb250ZW50IjpbImV4cG9ydCB7IEhlbGxvVGVzdEFwcFN0YWNrIH0gZnJvbSAnLi9oZWxsby10ZXN0LWFwcC1zdGFjayc7Il19

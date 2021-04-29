@@ -1,0 +1,27 @@
+{
+  "baseBranch": "develop",
+  "migrationBranchName": "VCT-10839-pod-rol-fixed-volume-event-sources",
+  "commitMessagePrefix": "VCT-10839 - pod-rol-fixed-volume-event-sources",
+  "githubTokenSSM": "/vcis/non-prod/app/github/token-sserr",
+  "tags": {
+    "teamName": "stark",
+    "featureName": "pod-rol-fixed-volume",
+    "applicationName": "Industry System",
+    "moduleName": "IS"
+  },
+  "feature": "pod-rol-fixed-volume",
+  "withDiscovery": true,
+  "queues": [
+    {
+      "name": "brazil-value-capture-pod-rol-fix-volume-bulk-dev",
+      "withRedrivePolicy": true
+    },
+    {
+      "name": "brazil-value-capture-pod-rol-fixed-volume-updater-dev",
+      "withRedrivePolicy": true
+    }
+  ],
+  "topics": [
+    "arn:aws:sns:us-east-1:285453578300:brazil-value-capture-pod-fixed-volume-updated-topic-dev"
+  ]
+}

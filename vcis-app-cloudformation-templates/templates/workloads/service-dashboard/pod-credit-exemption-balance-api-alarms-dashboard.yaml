@@ -1,0 +1,497 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VCIS POD Credit Exemption balance Api Alarms & Dashboard'
+
+Parameters:
+  FunctionName:
+    Type: String
+    Description: The lambda function name
+    Default: vcis-pod-credit-exemption-balance
+  ApiName:
+    Type: String
+    Description: The api gateway name
+    Default: vcis-pod-credit-exemption-balance-extract
+  Env:
+    Type: String
+    AllowedValues:
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Environment values must be DEV, TEST or PROD
+  Period:
+    Type: Number
+    Description: Is the length of time to evaluate the metric or expression to create each individual data point for an alarm. It is expressed in seconds. If you choose one minute as the period, there is one data point every minute.
+    Default: 300
+  ErrorThreshold:
+    Type: Number
+    Description: The value to compare with the Errors (AWS/Lambda) statistic
+    Default: 5
+  4XXErrorThreshold:
+    Type: Number
+    Description: The value to compare with the 4XXError (AWS/ApiGateway) statistic 
+    Default: 1
+  5XXErrorThreshold:
+    Type: Number
+    Description: The value to compare with the 4XXError (AWS/ApiGatewaya) statistic
+    Default: 1
+  DurationThreshold:
+    Type: Number
+    Description: The value to compare with the 4XXError (AWS/Lambda) statistic
+    Default: 1000
+  ThrottlesThreshold:
+    Type: Number
+    Description: The value to compare with the 4XXError (AWS/Lambda) statistic
+    Default: 1
+  LatencyThreshold:
+    Type: Number
+    Description: The value to compare with the 4XXError (AWS/ApiGateway) statistic
+    Default: 29000
+  NotificationTopicARN:
+    Description: >-
+      The SSM Param for the SNS ARN that should receive events from these alarms and filters.
+    Type: 'AWS::SSM::Parameter::Value<String>'
+
+Mappings:
+  StageMap:
+    dev:
+      lambdaFunctionName: DEV
+    it: 
+      lambdaFunctionName: TEST
+    prod:
+      lambdaFunctionName: PROD
+
+Resources:
+  ErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmActions:
+        - !Ref NotificationTopicARN
+      AlarmDescription: 
+        !Sub 'Measures the number of invocations that failed due to errors in the function (response code 4XX). 
+        Failed invocations may trigger a retry attempt that succeeds.
+        The alarm is in the ALARM state when the metric is GreaterThanOrEqualToThreshold than ${ErrorThreshold} for ${Period} sec'
+      AlarmName: !Sub '${FunctionName}-${Env}-Errors'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: 'Errors'
+      Namespace: 'AWS/Lambda'
+      Period: !Ref Period
+      Statistic: Sum
+      Threshold: !Ref ErrorThreshold
+      Dimensions:
+        [
+        {
+            "Name": "Resource",
+            "Value": !Join ['', [!Ref FunctionName, '-',!FindInMap [StageMap, !Ref Env, lambdaFunctionName], ':', !FindInMap [StageMap, !Ref Env, lambdaFunctionName]]]
+         },
+         {
+            "Name": "FunctionName",
+            "Value": !Join ['', [!Ref FunctionName, '-',!FindInMap [StageMap, !Ref Env, lambdaFunctionName]]]
+         }
+        ]
+
+  DurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmActions:
+        - !Ref NotificationTopicARN
+      AlarmDescription: 
+        !Sub 'Measures the elapsed wall clock time from when the function code starts executing as a result of an invocation to when it stops executing. 
+        The maximum data point value possible is the function timeout configuration.
+        The alarm is in the ALARM state when the metric is GreaterThanOrEqualToThreshold than ${DurationThreshold} for ${Period} sec'
+      AlarmName: !Sub '${FunctionName}-${Env}-Duration'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: 'Duration'
+      Namespace: 'AWS/Lambda'
+      Period: !Ref Period
+      Statistic: Average
+      Threshold: !Ref DurationThreshold
+      Dimensions:
+        [
+        {
+            "Name": "Resource",
+            "Value": !Join ['', [!Ref FunctionName,'-', !FindInMap [ StageMap, !Ref Env, lambdaFunctionName ], ':', !FindInMap [ StageMap, !Ref Env, lambdaFunctionName ]]]
+         },
+         {
+            "Name": "FunctionName",
+            "Value": !Join ['', [!Ref FunctionName,'-', !FindInMap [ StageMap, !Ref Env, lambdaFunctionName ]]]
+         }
+        ]
+
+  ThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmActions:
+        - !Ref NotificationTopicARN
+      AlarmDescription: 
+        !Sub 'Measures the number of Lambda function invocation attempts that were throttled due to invocation rates exceeding the customer’s concurrent limits (error code 429)
+        The alarm is in the ALARM state when the metric is GreaterThanOrEqualToThreshold than ${ThrottlesThreshold} for ${Period} sec'
+      AlarmName: !Sub '${FunctionName}-${Env}-Throttles'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: 'Throttles'
+      Namespace: 'AWS/Lambda'
+      Period: !Ref Period
+      Statistic: Average
+      Threshold: !Ref ThrottlesThreshold
+      Dimensions:
+        [
+        {
+            "Name": "Resource",
+            "Value": !Join ['', [!Ref FunctionName,'-', !FindInMap [ StageMap, !Ref Env, lambdaFunctionName ], ':', !FindInMap [ StageMap, !Ref Env, lambdaFunctionName ]]]
+         },
+         {
+            "Name": "FunctionName",
+            "Value": !Join ['', [!Ref FunctionName,'-', !FindInMap [ StageMap, !Ref Env, lambdaFunctionName ]]]
+         }
+        ]
+
+  5XXErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmActions:
+        - !Ref NotificationTopicARN
+      AlarmDescription: 
+        !Sub 'The number of server-side errors captured in a given period.
+          The alarm is in the ALARM state when the metric is GreaterThanOrEqualToThreshold than ${5XXErrorThreshold} for ${Period} sec'
+      AlarmName: !Sub '${ApiName}-${Env}-5XXError'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: '5XXError'
+      Namespace: 'AWS/ApiGateway'
+      Period: !Ref Period
+      Statistic: Average
+      Threshold: !Ref 5XXErrorThreshold
+      Dimensions:
+        [
+         {
+            "Name": "ApiName",
+            "Value": !Sub '${ApiName}-${Env}'
+         }
+        ]
+
+  4XXErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmActions:
+        - !Ref NotificationTopicARN
+      AlarmDescription: 
+        !Sub 'The number of client-side errors captured in a given period.
+          The alarm is in the ALARM state when the metric is GreaterThanOrEqualToThreshold than ${4XXErrorThreshold} for ${Period} sec'
+      AlarmName: !Sub '${ApiName}-${Env}-4XXError'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: '4XXError'
+      Namespace: 'AWS/ApiGateway'
+      Period: !Ref Period
+      Statistic: Average
+      Threshold: !Ref 4XXErrorThreshold
+      Dimensions:
+        [
+         {
+            "Name": "ApiName",
+            "Value": !Sub '${ApiName}-${Env}'
+         }
+        ]
+  
+  LatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      AlarmActions:
+        - !Ref NotificationTopicARN
+      AlarmDescription: 
+        !Sub 'The time between when API Gateway receives a request from a client and when it returns a response to the client. 
+        The latency includes the integration latency and other API Gateway overhead.
+        The alarm is in the ALARM state when the metric is GreaterThanOrEqualToThreshold than ${LatencyThreshold} for ${Period} sec'
+      AlarmName: !Sub '${ApiName}-${Env}-Latency'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      MetricName: 'Latency'
+      Namespace: 'AWS/ApiGateway'
+      Period: !Ref Period
+      Statistic: Average
+      Threshold: !Ref LatencyThreshold
+      Dimensions:
+        [
+         {
+            "Name": "ApiName",
+            "Value": !Sub '${ApiName}-${Env}'
+         }
+        ]
+  
+  CloudWatchDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties: 
+      DashboardName: !Sub '${FunctionName}'
+      DashboardBody: !Sub 
+                        - '{
+                              "start": "-PT24H",
+                              "periodOverride": "inherit",
+                              "widgets": [
+                                  {
+                                    "type": "metric",
+                                    "width": 8,
+                                    "height": 7,
+                                    "properties": {
+                                      "view": "timeSeries",
+                                      "stacked": false,
+                                        "metrics": [
+                                          [ "AWS/Lambda", "Invocations", "FunctionName", "${LambdaFunctionName}", { "stat": "Sum" }],
+                                          [ "AWS/Lambda", "Invocations", "FunctionName", "${LambdaFunctionName}", { "stat": "Sum" }],
+                                          [ "AWS/Lambda", "Invocations", "FunctionName", "${LambdaFunctionName}", { "stat": "Sum" }],
+                                          [ "AWS/ApiGateway", "Count", "ApiName", "${ApiGateWayName}", { "stat": "Sum" }]
+                                        ],
+                                        "region": "${AWS::Region}",
+                                        "start": "-PT24H",
+                                        "end": "P0D",
+                                        "title": "Invocations"
+                                    }
+                                  },
+                                  {
+                                    "type": "metric",
+                                    "width": 8,
+                                    "height": 7,
+                                    "properties": {
+                                      "view": "timeSeries",
+                                      "stacked": false,
+                                        "metrics": [
+                                          [ "AWS/Lambda", "Errors", "FunctionName", "${LambdaFunctionName}",{ "stat": "Sum" } ],
+                                          [ "AWS/ApiGateway", "4XXError", "ApiName", "${ApiGateWayName}", { "stat": "Sum" }],
+                                          [ ".", "5XXError", "ApiName", "${ApiGateWayName}", { "stat": "Sum" }]
+                                        ],
+                                        "region": "${AWS::Region}",
+                                        "start": "-PT24H",
+                                        "end": "P0D",
+                                        "title": "Errors"
+                                    }
+                                  },
+                                  {
+                                    "type": "metric",
+                                    "width": 8,
+                                    "height": 7,
+                                    "properties": {
+                                      "view": "timeSeries",
+                                      "stacked": false,
+                                        "metrics": [
+                                          [ "AWS/Lambda", "Throttles","FunctionName", "${LambdaFunctionName}",{ "stat": "Sum" }]
+                                        ],
+                                        "region": "${AWS::Region}",
+                                        "start": "-PT24H",
+                                        "end": "P0D",
+                                        "title": "Throttles"
+                                    }
+                                  },
+                                  {
+                                    "type": "text",
+                                    "width": 8,
+                                    "height": 3,
+                                    "properties": {
+                                        "markdown": "\n### Invocations\nMeasures the number of times a function is invoked in response to an event or invocation API call\n"
+                                    }
+                                  },
+                                  {
+                                      "type": "text",
+                                      "width": 8,
+                                      "height": 3,
+                                      "properties": {
+                                          "markdown": "\n### Errors\nMeasures the number of invocations that failed due to errors in the function (response code 4XX). Failed invocations may trigger a retry attempt that succeeds. This includes:\n* Handled exceptions (for example, context.fail(error))\n* Unhandled exceptions causing the code to exit\n* Out of memory exceptions* Timeouts"
+                                      }
+                                  },
+                                  {
+                                      "type": "text",
+                                      "width": 8,
+                                      "height": 3,
+                                      "properties": {
+                                          "markdown": "\n### Throttles\nMeasures the number of Lambda function invocation attempts that were throttled due to invocation rates exceeding the customer’s concurrent limits (error code 429). Failed invocations may trigger a retry attempt that succeeds\n"
+                                      }
+                                  },
+                                  {
+                                    "type": "metric",
+                                    "width": 8,
+                                    "height": 7,
+                                    "properties": {
+                                      "view": "timeSeries",
+                                      "stacked": false,
+                                        "metrics": [
+                                          [ "AWS/Lambda", "Duration", "FunctionName", "${LambdaFunctionName}",{ "stat": "Minimum" }],
+                                          [ "...", { "stat": "Average" } ],
+                                          [ "...", { "stat": "Maximum" } ],
+                                          [ "AWS/ApiGateway", "Latency", "ApiName", "${ApiGateWayName}", { "stat": "Average" }]
+                                        ],
+                                        "region": "${AWS::Region}",
+                                        "start": "-PT24H",
+                                        "end": "P0D",
+                                        "title": "Duration"
+                                    }
+                                  },
+                                  {
+                                    "type": "metric",
+                                    "width": 8,
+                                    "height": 7,
+                                    "properties": {
+                                      "view": "timeSeries",
+                                      "stacked": false,
+                                      "annotations": {
+                                        "alarms": [
+                                            "arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${FunctionName}-${Env}-Errors"
+                                        ]
+                                      },
+                                      "region": "${AWS::Region}",
+                                      "start": "-PT24H",
+                                      "end": "P0D",
+                                      "title": "Error Alarm"
+                                    }
+                                  },
+                                  {
+                                    "type": "metric",
+                                    "width": 8,
+                                    "height": 7,
+                                    "properties": {
+                                      "view": "timeSeries",
+                                      "stacked": false,
+                                      "annotations": {
+                                        "alarms": [
+                                            "arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${FunctionName}-${Env}-Duration"
+                                        ]
+                                      },
+                                      "region": "${AWS::Region}",
+                                      "start": "-PT24H",
+                                      "end": "P0D",
+                                      "title": "Duration Alarm"
+                                    }
+                                  },
+                                  {
+                                    "type": "text",
+                                    "width": 8,
+                                    "height": 3,
+                                    "properties": {
+                                        "markdown": "\n### Duration\nMeasures the elapsed wall clock time from when the function code starts executing as a result of an invocation to when it stops executing. The maximum data point value possible is the function timeout configuration"
+                                    }
+                                  },
+                                  {
+                                      "type": "text",
+                                      "width": 8,
+                                      "height": 3,
+                                      "properties": {
+                                          "markdown": "\n### Error Alarm\nMeasures the number of invocations that failed due to errors in the function (response code 4XX). 
+        Failed invocations may trigger a retry attempt that succeeds"
+                                      }
+                                  },
+                                  {
+                                      "type": "text",
+                                      "width": 8,
+                                      "height": 3,
+                                      "properties": {
+                                          "markdown": "\n### Duration Alarm\nMeasures the elapsed wall clock time from when the function code starts executing as a result of an invocation to when it stops executing. 
+        The maximum data point value possible is the function timeout configuration"
+                                      }
+                                  },
+                                  {
+                                    "type": "metric",
+                                    "width": 8,
+                                    "height": 7,
+                                    "properties": {
+                                      "view": "timeSeries",
+                                      "stacked": false,
+                                      "annotations": {
+                                        "alarms": [
+                                            "arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${FunctionName}-${Env}-Throttles"
+                                        ]
+                                      },
+                                      "region": "${AWS::Region}",
+                                      "start": "-PT24H",
+                                      "end": "P0D",
+                                      "title": "Throttles Alarm"
+                                    }
+                                  },
+                                  {
+                                    "type": "metric",
+                                    "width": 8,
+                                    "height": 7,
+                                    "properties": {
+                                      "view": "timeSeries",
+                                      "stacked": false,
+                                      "annotations": {
+                                        "alarms": [
+                                            "arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${ApiName}-${Env}-5XXError"
+                                        ]
+                                      },
+                                      "region": "${AWS::Region}",
+                                      "start": "-PT24H",
+                                      "end": "P0D",
+                                      "title": "5XXError Alarm"
+                                    }
+                                  },
+                                  {
+                                    "type": "metric",
+                                    "width": 8,
+                                    "height": 7,
+                                    "properties": {
+                                      "view": "timeSeries",
+                                      "stacked": false,
+                                      "annotations": {
+                                        "alarms": [
+                                            "arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${ApiName}-${Env}-4XXError"
+                                        ]
+                                      },
+                                      "region": "${AWS::Region}",
+                                      "start": "-PT24H",
+                                      "end": "P0D",
+                                      "title": "4XXError Alarm"
+                                    }
+                                  },
+                                  {
+                                    "type": "text",
+                                    "width": 8,
+                                    "height": 3,
+                                    "properties": {
+                                        "markdown": "\n### Throttles Alarm\nMeasures the number of Lambda function invocation attempts that were throttled due to invocation rates exceeding the customer’s concurrent limits (error code 429)"
+                                    }
+                                  },
+                                  {
+                                      "type": "text",
+                                      "width": 8,
+                                      "height": 3,
+                                      "properties": {
+                                          "markdown": "\n### 5XXError Alarm\nThe number of server-side errors captured in a given period. 
+        Failed invocations may trigger a retry attempt that succeeds"
+                                      }
+                                  },
+                                  {
+                                      "type": "text",
+                                      "width": 8,
+                                      "height": 3,
+                                      "properties": {
+                                          "markdown": "\n### 4XXError Alarm\nThe number of client-side errors captured in a given period"
+                                      }
+                                  },
+                                  {
+                                    "type": "metric",
+                                    "width": 8,
+                                    "height": 7,
+                                    "properties": {
+                                      "view": "timeSeries",
+                                      "stacked": false,
+                                      "annotations": {
+                                        "alarms": [
+                                            "arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${ApiName}-${Env}-Latency"
+                                        ]
+                                      },
+                                      "region": "${AWS::Region}",
+                                      "start": "-PT24H",
+                                      "end": "P0D",
+                                      "title": "Latency Alarm"
+                                    }
+                                  },
+                                  {
+                                      "type": "text",
+                                      "width": 8,
+                                      "height": 3,
+                                      "properties": {
+                                          "markdown": "\n### Latency Alarm\nThe time between when API Gateway receives a request from a client and when it returns a response to the client. 
+        The latency includes the integration latency and other API Gateway overhead"
+                                      }
+                                  }
+                                ]
+                              }'
+                        - {LambdaFunctionName: !Join ['', [!Ref FunctionName,'-',!FindInMap [StageMap, !Ref Env, lambdaFunctionName]]], ApiGateWayName: !Join ['', [!Ref ApiName,'-',!Ref Env]]}

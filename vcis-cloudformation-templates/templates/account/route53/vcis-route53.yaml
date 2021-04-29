@@ -1,0 +1,125 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: >-
+  'This templates deploys Route53 hosted zones in the account level.'
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    AllowedValues:
+      - 'non-prod'
+      - 'prod'
+    ConstraintDescription: 'Must be either non-prod or prod.'
+    Description: 'Deployment Environment'
+    Type: 'String'
+
+  ProjectModuleTag:
+    Description: 'Project Module Tag Value'
+    Type: 'AWS::SSM::Parameter::Value<String>'
+
+  RdsDomainName:
+    Default: ''
+    Description: 'Domain Name for the private hosted zone.'
+    Type: 'String'
+
+  RedisDomainName:
+    Default: ''
+    Description: 'Domain Name for the Redis cache hosted zone.'
+    Type: 'String'
+
+  VpcRegion:
+    Description: >-
+      'Region of the VPC attached to the private
+      hosted zone in the vcis account.'
+    Type: 'String'
+    
+  VpcStackNameDEV:
+    Default: ''
+    Description: 'Id of the DEV VPC attached to the private hosted zone.'
+    Type: 'String'
+
+  VpcStackNameIT:
+    Default: ''
+    Description: 'Id of the IT VPC attached to the private hosted zone.'
+    Type: 'String'
+
+  VpcStackNamePROD:
+    Default: ''
+    Description: 'Id of the PROD VPC attached to the private hosted zone.'
+    Type: 'String'
+
+Conditions:
+
+  IsNonProd: !Equals [!Ref 'Env', 'non-prod']
+  IsProd: !Equals [!Ref 'Env', 'prod']
+
+Resources:
+
+  RdsHostedZone:
+    Type: 'AWS::Route53::HostedZone'
+    Condition: 'IsNonProd'
+    Properties:
+      Name: !Ref 'RdsDomainName'
+      VPCs:
+        - VPCId:
+            Fn::ImportValue: !Sub '${VpcStackNameDEV}-VpcId'
+          VPCRegion: !Ref 'VpcRegion'
+        -
+          VPCId:
+            Fn::ImportValue: !Sub '${VpcStackNameIT}-VpcId'
+          VPCRegion: !Ref 'VpcRegion'
+
+  RdsProdHostedZone:
+    Type: 'AWS::Route53::HostedZone'
+    Condition: 'IsProd'
+    Properties:
+      Name: !Ref 'RdsDomainName'
+      VPCs:
+        - VPCId:
+            Fn::ImportValue: !Sub '${VpcStackNamePROD}-VpcId'
+          VPCRegion: !Ref 'VpcRegion'
+
+  RedisHostedZone:
+    Type: 'AWS::Route53::HostedZone'
+    Condition: 'IsNonProd'
+    Properties:
+      Name: !Ref 'RedisDomainName'
+      VPCs:
+        - VPCId:
+            Fn::ImportValue: !Sub '${VpcStackNameDEV}-VpcId'
+          VPCRegion: !Ref 'VpcRegion'
+        -
+          VPCId:
+            Fn::ImportValue: !Sub '${VpcStackNameIT}-VpcId'
+          VPCRegion: !Ref 'VpcRegion'
+
+  RedisProdHostedZone:
+    Type: 'AWS::Route53::HostedZone'
+    Condition: 'IsProd'
+    Properties:
+      Name: !Ref 'RedisDomainName'
+      VPCs:
+        - VPCId:
+            Fn::ImportValue: !Sub '${VpcStackNamePROD}-VpcId'
+          VPCRegion: !Ref 'VpcRegion'
+
+Outputs:
+  HostedZoneId:
+    Description: 'RDS HostedZone ID'
+    Value: !If
+      - 'IsProd'
+      - !Ref 'RdsProdHostedZone'
+      - !Ref 'RdsHostedZone'
+    Export:
+      Name: !Sub '${AWS::StackName}-HostedZoneId'
+  RedisHostedZoneId:
+    Description: 'Redis cache hostedzone ID'
+    Value: !If
+      - 'IsProd'
+      - !Ref 'RedisProdHostedZone'
+      - !Ref 'RedisHostedZone'
+    Export:
+      Name: !Sub '${AWS::StackName}-RedisHostedZoneId'
+...

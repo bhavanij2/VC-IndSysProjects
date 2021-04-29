@@ -1,0 +1,11 @@
+{
+  "Parameters" : {
+    "Env": "non-prod",
+    "ProjectModuleTag": "/vcis/non-prod/infra/tags/project-module-value-capture-industry-system",
+    "RdsDomainName": "rds.vcis.internal.test",
+    "RedisDomainName": "redis.vcis.internal.test",
+    "VpcStackNameDEV": "vcis-vpc-dev",
+    "VpcStackNameIT": "vcis-vpc-it",
+    "VpcRegion": "us-east-1"
+  }
+}

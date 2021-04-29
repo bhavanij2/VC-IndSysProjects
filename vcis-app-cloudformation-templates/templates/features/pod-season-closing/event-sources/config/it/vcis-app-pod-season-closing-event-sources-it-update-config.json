@@ -1,0 +1,14 @@
+{
+  "Parameters": {
+    "Env": "it",
+    "ProjectModuleTag": "/vcis/it/infra/tags/project-module-pod",
+    "KMS": "/vcis/it/app/kms/sharedAccount",
+    "CustomTags": "Key=mon:feature,Value=pod-season-closing,Key=mon:team,Value=stark,Key=mon:application,Value=Industry System,Key=mon:module,Value=IS",
+    "PodSeasonClosingNonFixedGrowerUpdaterSQSName": "vcis-app-pod-season-closing-non-fixed-grower-updater-tmp",
+    "PodSeasonClosingBulkSQSName": "vcis-app-pod-season-closing-bulk-tmp",
+    "PodSeasonClosingUpdaterSQSName": "vcis-app-pod-season-closing-updater-tmp",
+    "PodSeasonClosingSQSName": "vcis-app-pod-season-closing-tmp",
+    "TopicPersisterSQSName": "vcis-app-topic-persister-tmp",
+    "PodSeasonClosingUpdatedTopicSNSName": "vcis-app-pod-season-closing-updated-topic-tmp"
+  }
+}

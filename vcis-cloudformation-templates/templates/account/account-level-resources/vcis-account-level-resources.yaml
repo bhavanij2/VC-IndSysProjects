@@ -1,0 +1,213 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Common infrastracture resources
+Parameters:
+    Env:
+      Description: >-
+        A value used to describe the environment you will deploy to. This value will be used to get values
+        from SSM Parameter Store. Keys in Parameter store should begin with: /vcis/environment.
+      Type: String
+      AllowedValues:
+        # non-prod should be used only for account level infra resources (for non-prod account)
+        - non-prod
+        - prod
+      ConstraintDescription: Must be a non-prod or prod.
+
+    # SSM parameter for Project Module tag
+    ProjectModuleTag:
+        Type: AWS::SSM::Parameter::Value<String>
+        Description: Project Module Tag Value
+
+Conditions:
+  IsProdEnv: !Equals [!Ref Env, 'prod']
+
+# Transformation macro for tagging
+Transform: [VcisCommonTagsMacro]
+
+Resources:
+  #Apigateway Resources
+  ApiGatewayCloudWatchLogRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+
+  ApiGatewayAccount:
+    Type: 'AWS::ApiGateway::Account'
+    DependsOn: ApiGatewayCloudWatchLogRole
+    Properties:
+      CloudWatchRoleArn: !GetAtt
+        - ApiGatewayCloudWatchLogRole
+        - Arn
+
+# Domain resources
+
+  # To be deprecated. Smoothly transition to the new custom domain is.its-plus.com
+  CertificateArnSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Description: Certificate ARN
+      Name: !Sub '/vcis/${Env}/infra/certificate/certificate-arn'
+      Value: !If
+       - IsProdEnv
+       - 'arn:aws:acm:us-east-1:820712698669:certificate/135b69aa-14c6-4f1a-a1d0-2bab978d2aff'
+       - 'arn:aws:acm:us-east-1:578248469025:certificate/6f7dff60-a4e5-44c6-86c2-cc895519a8f3'
+
+  # To be deprecated. Smoothly transition to the new custom domain is.its-plus.com
+  HostDomainNameSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Industry System Domain Name
+      Name: !Sub '/vcis/${Env}/infra/domain/name'
+      Type: String
+      Value: !If
+        - IsProdEnv
+        - 'pod.its-plus.com'
+        - 'pod-np.its-plus.com'
+
+  # To be deprecated. Smoothly transition to the new custom domain is.its-plus.com
+  RestApiDomainNameSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Rest Api Base Domain Name
+      Name: !Sub '/vcis/${Env}/infra/rest-api-domain/name'
+      Type: String
+      Value: !If
+        - IsProdEnv
+        - 'api.pod.its-plus.com'
+        - 'api.pod-np.its-plus.com'
+
+  # To be deprecated. Smoothly transition to the new custom domain is.its-plus.com
+  WebsocketApiDomainNameSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Websocket Api Base Domain Name
+      Name: !Sub '/vcis/${Env}/infra/websocket-api-domain/name'
+      Type: String
+      Value: !If
+        - IsProdEnv
+        - 'ws-api.pod.its-plus.com'
+        - 'ws-api.pod-np.its-plus.com'
+
+  # To be deprecated. Smoothly transition to the new custom domain is.its-plus.com
+  ApiGatewayCustomDomain:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      CertificateArn: !GetAtt CertificateArnSSMParam.Value
+      DomainName: !GetAtt RestApiDomainNameSSMParam.Value
+      EndpointConfiguration:
+        Types:
+          - EDGE
+
+  ISCertificateArnSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Description: Certificate ARN
+      Name: !Sub '/vcis/${Env}/infra/is-certificate/certificate-arn'
+      Value: !If
+        - IsProdEnv
+        - 'arn:aws:acm:us-east-1:820712698669:certificate/ff1511cb-d1ef-4cc1-a72b-2c335f1f70c2'
+        - 'arn:aws:acm:us-east-1:578248469025:certificate/680bab0d-d832-46e8-929d-43740f59584d'
+
+  ISHostDomainNameSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Industry System Domain Name
+      Name: !Sub '/vcis/${Env}/infra/is-domain/name'
+      Type: String
+      Value: !If
+        - IsProdEnv
+        - 'is.its-plus.com'
+        - 'is-np.its-plus.com'
+
+  ISRestApiDomainNameSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Rest Api Base Domain Name
+      Name: !Sub '/vcis/${Env}/infra/is-rest-api-domain/name'
+      Type: String
+      Value: !If
+        - IsProdEnv
+        - 'api.is.its-plus.com'
+        - 'api.is-np.its-plus.com'
+
+  ISWebsocketApiDomainNameSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Websocket Api Base Domain Name
+      Name: !Sub '/vcis/${Env}/infra/is-websocket-api-domain/name'
+      Type: String
+      Value: !If
+        - IsProdEnv
+        - 'ws-api.is.its-plus.com'
+        - 'ws-api.is-np.its-plus.com'
+
+  # The custom domain for the new custom domain is.its-plus.com
+  ISApiGatewayCustomDomain:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      CertificateArn: !GetAtt ISCertificateArnSSMParam.Value
+      DomainName: !GetAtt ISRestApiDomainNameSSMParam.Value
+      EndpointConfiguration:
+        Types:
+          - EDGE
+
+  ISHostedZoneIdSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/vcis/${Env}/infra/is-hosted-zone/id'
+      Description: IS Hosted Zone Identifier
+      Type: String
+      Value: !If
+        - IsProdEnv
+        - 'Z00748631X7YJQVF6LK57'
+        - 'Z00756572QKMR9X57J6SE'
+        
+# Service Catalog Products S3 Source Bucket
+  ServiceCatalogProductsSourceBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+
+  LoggingTargetBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      AccessControl: LogDeliveryWrite
+
+Outputs:
+  ApiGatewayCustomDomainOutput:
+    Description: >-
+        Api Gateway Custom Domain
+    Value: !Ref ApiGatewayCustomDomain
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayCustomDomain'
+
+  ISApiGatewayCustomDomainOutput:
+    Description: >-
+      Api Gateway Custom Domain
+    Value: !Ref ISApiGatewayCustomDomain
+    Export:
+      Name: !Sub '${AWS::StackName}-ISApiGatewayCustomDomain'
+
+  SourceBucket:
+    Description: >-
+      This bucket is used as the Source for Service Catalog Products
+    Value: !Ref ServiceCatalogProductsSourceBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-ServiceCatalogProductsSourceBucket'
+
+  LoggingBucket:
+    Description: >-
+      This bucket is used as the destination for log files from other S3 buckets
+    Value: !Ref LoggingTargetBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-LoggingTargetBucket'

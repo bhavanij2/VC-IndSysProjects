@@ -1,0 +1,63 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo ENTERING INSTALL PHASE......
+      - sudo apt-get update -y
+      - sudo apt-get install zip gzip tar -y
+      - pip3 install --upgrade pip
+      - ln -s /usr/local/bin/pip /usr/bin/pip
+  pre_build:
+    commands:
+      - echo ENTERING PRE_BUILD PHASE......
+      - echo Current build directory is $CODEBUILD_SRC_DIR
+      - echo Installing Taskcat using pip3......
+      - pip install taskcat || exit 1
+      - echo Verifying Taskcat installation......
+      - taskcat
+      - echo SETTING UP MACRO DEPENDENCIES......
+      - aws --region us-east-2 cloudformation describe-stacks --stack-name "test-macro-parameters-${ENV}" || aws --region us-east-2 cloudformation create-stack --stack-name "test-macro-parameters-${ENV}" --template-body file://templates/environment/tags/tag-parameters.yaml --parameters file://templates/environment/tags/config/${ENV}/tag-parameters-${ENV}-config.json
+      - aws --region us-east-2 cloudformation wait stack-create-complete --stack-name "test-macro-parameters-${ENV}"
+      - aws --region us-east-2 cloudformation describe-stacks --stack-name "test-macro-parameters-common" || aws --region us-east-2 cloudformation create-stack --stack-name "test-macro-parameters-common" --template-body file://templates/environment/tags/tag-parameters.yaml --parameters file://templates/environment/tags/config/common/tag-parameters-common-config.json
+      - aws --region us-east-2 cloudformation wait stack-create-complete --stack-name "test-macro-parameters-common"
+      - echo SETTING UP MACRO......
+      - aws s3api head-bucket --bucket vcis-macro-testing-bucket --region us-east-2 || aws s3api create-bucket --bucket vcis-macro-testing-bucket --region us-east-2 --create-bucket-configuration LocationConstraint=us-east-2
+      - aws --region us-east-2 cloudformation package --template-file templates/foundations/macros/common-tags/common-tags.yml --s3-bucket vcis-macro-testing-bucket --output-template-file packaged-template.yml
+      - aws --region us-east-2 cloudformation describe-stacks --stack-name "vcis-infra-test-macro-common-tags" || aws --region us-east-2 cloudformation deploy --template-file packaged-template.yml --stack-name vcis-infra-test-macro-common-tags --capabilities CAPABILITY_NAMED_IAM --parameter-overrides Env=${ENV}
+      - echo SETTING UP TEST DEPENDENCIES......
+      - aws --region us-east-2 cloudformation describe-stacks --stack-name "vcis-commom-test-dependencies" || aws --region us-east-2 cloudformation create-stack --stack-name "vcis-commom-test-dependencies" --template-body file://templates/account/workloads-input-params/workloads-input-params.yaml --parameters file://templates/account/workloads-input-params/non-prod/workloads-input-params-non-prod-config.json --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+      - aws --region us-east-2 cloudformation describe-stacks --stack-name "vcis-env-infra-test-dependencies" || aws --region us-east-2 cloudformation create-stack --stack-name "vcis-env-infra-test-dependencies" --template-body file://templates/environment/workloads-input-params/workloads-input-params.yaml --parameters file://templates/environment/workloads-input-params/config/dev/dev-config.json --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+      - aws --region us-east-2 cloudformation wait stack-create-complete --stack-name "vcis-env-infra-test-dependencies"
+      - cp templates/foundations/pipeline/infrastructure/infra-pipeline.yaml templates/
+      - sed -i "s/PLACEHOLDER/cd-param-${ENV}.json/g" ci/taskcat.yaml
+      - sed -i "s/TESTNAME/${TEST_NAME}-infra-testcase/g" ci/taskcat.yaml
+      - cp  ${CONFIG_PATH}/cd-param-${ENV}.json ci/
+
+  build:
+    commands:
+      - echo ENTERING BUILD PHASE......
+      - taskcat -c ci/taskcat.yaml --verbose
+      - echo CLEANING UP DEPENDENCIES...
+      - aws --region us-east-2 cloudformation delete-stack --stack-name "vcis-commom-test-dependencies"
+      - aws --region us-east-2 cloudformation delete-stack --stack-name "vcis-env-infra-test-dependencies"
+      - echo CLEANING UP TEST MACROS...
+      - aws --region us-east-2 cloudformation delete-stack --stack-name vcis-infra-test-macro-common-tags
+      - aws --region us-east-2 cloudformation delete-stack --stack-name test-macro-parameters-${ENV}
+      - aws --region us-east-2 cloudformation delete-stack --stack-name test-macro-parameters-common
+      - echo DELETING MACROS S3 BUCKET...
+      - aws s3 rb s3://vcis-macro-testing-bucket --force --region us-east-2
+      - ls -1 taskcat_outputs
+      - ls -1 taskcat_outputs | while read LOG; do cat taskcat_outputs/${LOG}; done
+      - echo Zipping and uploading report to $ARTIFACT_BUCKET S3 bucket
+      - zip -r taskcat_report.zip taskcat_outputs
+      - aws s3 cp taskcat_report.zip s3://${SOURCE_BUCKET}/taskcat_reports/$CODEBUILD_BUILD_ID.zip
+      - |
+        if $(grep -Fq "CREATE_FAILED" taskcat_outputs/index.html)
+        then
+          echo Test FAILED!
+          exit 1
+        else
+          echo Test Passed!
+          exit 0
+        fi

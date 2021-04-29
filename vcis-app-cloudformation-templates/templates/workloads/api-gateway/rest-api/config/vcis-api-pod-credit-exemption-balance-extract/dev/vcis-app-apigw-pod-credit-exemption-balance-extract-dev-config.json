@@ -1,0 +1,11 @@
+{
+  "Parameters" : {
+    "Env": "dev",
+    "RestApiName" : "vcis-app-pod-credit-exemption-balance-extract",
+    "RestApiDescription" : "POD - Credit Exemption Balance and Extract API",
+    "LambdaAuthorizerStackName": "vcis-app-pod-ping-authorizer-dev",
+    "ProjectModuleTag": "/vcis/dev/infra/tags/project-module-pod",
+    "RestApiCustomDomainName": "/vcis/non-prod/infra/rest-api-domain/name",
+    "StageName": "dev"
+  }
+}

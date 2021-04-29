@@ -1,0 +1,34 @@
+Transform: [VcisCommonTagsMacro]
+Parameters:
+  Env:
+    Type: String
+    Description: Environment in which resources should be deployed
+    AllowedValues:
+      - dev
+      - it
+      - prod
+    ConstraintDescription: Must be either dev, it or prod
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag SSM Param Name.
+
+  SAMSampleAppTwoSQSName:
+    Type: String
+    Description: SQS Name
+
+Resources:
+  ### Queues
+  BulkSplitRequestSQS:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 10
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 60
+      QueueName: !Join
+        - ''
+        - - !Ref SAMSampleAppTwoSQSName
+          - '-'
+          - !Ref Env

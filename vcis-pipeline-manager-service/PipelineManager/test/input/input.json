@@ -1,0 +1,33 @@
+{
+    "StackName": "vcis-app-lambda-pipeline-commercial-hierarchy-data-retriever-dev",
+    "Parameters": [
+        {
+          "ParameterKey": "S3SourceKey",
+          "ParameterValue": "POD-Inc/pod-commercial-hierarchy-data-retriever/develop/POD-Inc_pod-commercial-hierarchy-data-retriever.zip"
+        },
+        {
+          "ParameterKey": "WorkloadName",
+          "ParameterValue": "vcis-app-commercial-hierarchy-data-retriever"
+        },
+        {
+          "ParameterKey": "Env",
+          "ParameterValue": "dev"
+        },
+        {
+          "ParameterKey": "ProjectModuleTag",
+          "ParameterValue": "/vcis/dev/infra/tags/project-module-pod"
+        },
+        {
+          "ParameterKey": "AppAccountLevelResourcesStackName",
+          "ParameterValue": "vcis-app-non-prod-account-level-resources"
+        },
+        {
+          "ParameterKey": "ApprovalNotificationsStackName",
+          "ParameterValue": ""
+        },
+        {
+          "ParameterKey": "CustomTags",
+          "ParameterValue": "Key=mon:feature,Value=commercial-hierarchy,Key=mon:team,Value=lannister,Key=mon:application,Value=Industry System,Key=mon:module,Value=IS"
+        }
+      ]
+}

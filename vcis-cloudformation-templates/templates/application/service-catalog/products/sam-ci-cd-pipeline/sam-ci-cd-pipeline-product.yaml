@@ -1,0 +1,133 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  AWS CloudFormation Template For Service Catalog Product - SAM CI-CD Pipeline
+
+Transform: [VcisCommonTagsMacro]
+
+Parameters:
+  Env:
+    Description: 'Environment in which resources should be deployed'
+    Type: String
+    AllowedValues:
+      - non-prod
+      - prod
+    ConstraintDescription: Must be either non-prod or prod
+
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  SAMCiCdPipelineProductName:
+    Description: SAM CI CD Service Catalog Product Name
+    Type: String
+    Default: 'sam-ci-cd-pipeline'
+
+  SAMCiCdPipelineProductDescription:
+    Description: SAM CI CD Service Catalog Product Name
+    Type: String
+    Default: 'CI-CD Pipeline for SAM Resources Deployment'
+
+  AccountLevelResourcesStackName:
+    Description: >-
+      Stack name exporting Account Level Resources like Service Catalog Product Source Bucket.
+    Type: String
+
+Resources:
+  SAMCiCdPipelineProduct:
+    Type: AWS::ServiceCatalog::CloudFormationProduct
+    Properties:
+      Name: !Ref SAMCiCdPipelineProductName
+      Description: !Ref SAMCiCdPipelineProductDescription
+      Owner: 'VCIS Cloud Admin'
+      ProvisioningArtifactParameters:
+        - Name: 1.0.0
+          Description: 'Initial Version'
+          Info:
+            "LoadTemplateFromURL":
+              !Join
+                - ''
+                - - "https://"
+                  - Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-ServiceCatalogProductsSourceBucket"
+                  - ".s3.amazonaws.com/sam-ci-cd-pipeline/1.0.0/sam-ci-cd-pipeline.yaml"
+        - Name: 1.0.1
+          Description: 'Support for child stack deletion when pipeline is begin deleted'
+          Info:
+            "LoadTemplateFromURL":
+              !Join
+                - ''
+                - - "https://"
+                  - Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-ServiceCatalogProductsSourceBucket"
+                  - ".s3.amazonaws.com/sam-ci-cd-pipeline/1.0.1/sam-ci-cd-pipeline.yaml"
+        - Name: 1.0.2
+          Description: 'Add DeleteRolePermissionsBoundary & Remove PermissionsBoundary'
+          Info:
+            "LoadTemplateFromURL":
+              !Join
+                - ''
+                - - "https://"
+                  - Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-ServiceCatalogProductsSourceBucket"
+                  - ".s3.amazonaws.com/sam-ci-cd-pipeline/1.0.2/sam-ci-cd-pipeline.yaml"
+        - Name: 1.0.3
+          Description: 'Fix DeleteRolePermissionsBoundary & Remove PermissionsBoundary'
+          Info:
+            "LoadTemplateFromURL":
+              !Join
+                - ''
+                - - "https://"
+                  - Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-ServiceCatalogProductsSourceBucket"
+                  - ".s3.amazonaws.com/sam-ci-cd-pipeline/1.0.3/sam-ci-cd-pipeline.yaml"
+        - Name: 1.0.4
+          Description: 'Add ssm:PutParameters'
+          Info:
+            "LoadTemplateFromURL":
+              !Join
+                - ''
+                - - "https://"
+                  - Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-ServiceCatalogProductsSourceBucket"
+                  - ".s3.amazonaws.com/sam-ci-cd-pipeline/1.0.4/sam-ci-cd-pipeline.yaml"
+        - Name: 1.0.5
+          Description: 'Add ssm:AddTagsToResource'
+          Info:
+            "LoadTemplateFromURL":
+              !Join
+                - ''
+                - - "https://"
+                  - Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-ServiceCatalogProductsSourceBucket"
+                  - ".s3.amazonaws.com/sam-ci-cd-pipeline/1.0.5/sam-ci-cd-pipeline.yaml"
+        - Name: 1.0.6
+          Description: 'Add ssm:DeleteParameter & ssm:PutParameter'
+          Info:
+            "LoadTemplateFromURL":
+              !Join
+                - ''
+                - - "https://"
+                  - Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-ServiceCatalogProductsSourceBucket"
+                  - ".s3.amazonaws.com/sam-ci-cd-pipeline/1.0.6/sam-ci-cd-pipeline.yaml"
+        - Name: 1.0.7
+          Description: 'Added needed permissions for allowing Approval Tool send SNS messages'
+          Info:
+            "LoadTemplateFromURL":
+              !Join
+                - ''
+                - - "https://"
+                  - Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-ServiceCatalogProductsSourceBucket"
+                  - ".s3.amazonaws.com/sam-ci-cd-pipeline/1.0.7/sam-ci-cd-pipeline.yaml"
+        - Name: 1.0.8
+          Description: 'Replaced Cfn stack eraser default value'
+          Info:
+            "LoadTemplateFromURL":
+              !Join
+                - ''
+                - - "https://"
+                  - Fn::ImportValue: !Sub "${AccountLevelResourcesStackName}-ServiceCatalogProductsSourceBucket"
+                  - ".s3.amazonaws.com/sam-ci-cd-pipeline/1.0.8/sam-ci-cd-pipeline.yaml"
+      SupportDescription: 'Please contact VCIS Cloud Admins for any assistance.'
+      SupportUrl: 'https://velocity.ag/profile/groups/VCISADMINROLESSO/members'
+
+Outputs:
+  SAMCiCdPipelineProductId:
+    Description: 'SAM CI-CD Pipeline Product ID'
+    Value: !Ref SAMCiCdPipelineProduct
+    Export:
+      Name: !Sub '${AWS::StackName}-SAMCiCdPipelineProductId'

@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Automate provisioning of CodeBuild with CodePipeline
+Transform: [VcisCommonTagsMacro]
+Parameters:
+    Env:
+      Type: String
+      Description: Environment in which resources should be deployed
+      AllowedValues:
+          - poc
+          - dev
+          - it
+          - prod
+          - non-prod
+      ConstraintDescription: Must be either poc, dev, it or prod
+    ProjectModuleTag:
+        Type: AWS::SSM::Parameter::Value<String>
+        Description: Project Module Tag Value
+    GHERepoURL:
+        Type: String
+    BuildOutputName:
+        Type: String
+    BuildOutputPath:
+        Type: String
+    AppAccountLevelResourcesStackName:
+        Description: >-
+            The name of the stack name that is exporting the pipeline workload inputs
+        Type: String
+
+Resources:
+    CodeBuildProject:
+        Type: AWS::CodeBuild::Project
+        Properties:
+            Description: !Sub 'CodeBuild for integrating GHE to S3 - ${GHERepoURL}'
+            BadgeEnabled: true
+            ServiceRole: !Ref 'CodeBuildServiceRole'
+            Environment:
+                ComputeType: BUILD_GENERAL1_SMALL
+                Image: aws/codebuild/standard:2.0
+                Type: LINUX_CONTAINER
+            Source:
+                Type: GITHUB_ENTERPRISE
+                Location: !Ref 'GHERepoURL'
+                ReportBuildStatus: true
+                BuildSpec: |
+                    version: 0.2
+                    phases:
+                        install:
+                            runtime-versions:
+                                nodejs: 10
+                    artifacts:
+                        files:
+                            - '**/*'
+            Artifacts:
+                Location:
+                    Fn::ImportValue: !Sub "${AppAccountLevelResourcesStackName}-SourceBucket"
+                Name: !Sub '${BuildOutputName}-${Env}'
+                Packaging: ZIP
+                Path: !Ref BuildOutputPath
+                Type: S3
+            LogsConfig:
+                CloudWatchLogs:
+                    Status: ENABLED
+
+    CodeBuildServiceRole:
+        Type: AWS::IAM::Role
+        Properties:
+            PermissionsBoundary: !Sub 'arn:aws:iam::${AWS::AccountId}:policy/standard-permissions-boundary'
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                    Effect: Allow
+                    Principal:
+                        Service: codebuild.amazonaws.com
+                    Action: sts:AssumeRole
+            ManagedPolicyArns:
+                - !Ref CodeBuildPolicy
+
+    CodeBuildPolicy:
+        Type: AWS::IAM::ManagedPolicy
+        Properties:
+          Description: "Policy for access to logs and S3 Buckets"
+          Path: "/"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            - Sid: BucketAccessPolicy
+              Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+                - s3:GetObjectVersion
+                - s3:GetBucketVersioning
+              Resource:
+                - !Join
+                    - ""
+                    - - 'arn:aws:s3:::'
+                      - Fn::ImportValue: !Sub "${AppAccountLevelResourcesStackName}-SourceBucket"
+                - !Join
+                    - ""
+                    - - 'arn:aws:s3:::'
+                      - Fn::ImportValue: !Sub "${AppAccountLevelResourcesStackName}-SourceBucket"
+                      - '/*'
+            - Sid: LogsPolicy
+              Effect: Allow
+              Action: logs:*
+              Resource: '*'

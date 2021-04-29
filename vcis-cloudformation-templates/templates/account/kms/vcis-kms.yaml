@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: "2010-09-09"
+# Transformation macro for tagging
+Transform: [VcisCommonTagsMacro]
+
+Description: KMS resources
+
+Parameters:
+  # Needed for Tagging-macro
+  Env:
+    Description: >-
+      A value used to describe the environment you will deploy to. This value will be used to get values
+      from SSM Parameter Store. Keys in Parameter store should begin with: /vcis/environment.
+    Type: String
+    AllowedValues:
+      - non-prod
+      - prod
+    ConstraintDescription: Must be a non-prod or prod.
+
+  # SSM parameter for Project Module tag
+  ProjectModuleTag:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Project Module Tag Value
+
+  VcisDefaultKMSParameter:
+    Type: String
+    Description: Default Parameter for KMS
+
+Resources:
+  DefaultVcisKMS:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Default master key that protects Secrets Manager data when no other key is defined
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: vcis-general-purpose-KMS-policy
+        Statement:
+          - Sid: Allow use of the key
+            Effect: Allow
+            Principal:
+              AWS: '*'
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:Create*
+              - kms:Describe*
+              - kms:Enable*
+              - kms:List*
+              - kms:Put*
+              - kms:Update*
+              - kms:Revoke*
+              - kms:Disable*
+              - kms:Get*
+              - kms:Delete*
+              - kms:ScheduleKeyDeletion
+              - kms:CancelKeyDeletion
+            Resource: '*'
+          - Sid: Allow administration of the key
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:role/vcis-admin-role'
+            Action:
+              - kms:Describe*
+              - kms:Get*
+              - kms:List*
+              - kms:RevokeGrant
+            Resource: '*'
+
+  DefaultVcisKMSAlias:
+    Type: AWS::KMS::Alias
+    Properties: 
+      AliasName: 'alias/vcis-default-kms'
+      TargetKeyId:
+        Ref: DefaultVcisKMS
+
+  # This value will be overrided manually only at non-prod account to pod-encryption-key. Production it's ok. We need to figure out
+  # a proper solution.
+  DefaultVcisKMSArnSSM:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The default KMS for VCIS
+      Name: !Ref VcisDefaultKMSParameter
+      Type: String
+      Value: 
+        !GetAtt DefaultVcisKMS.Arn

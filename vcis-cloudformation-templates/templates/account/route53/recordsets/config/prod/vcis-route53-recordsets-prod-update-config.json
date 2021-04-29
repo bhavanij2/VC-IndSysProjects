@@ -1,0 +1,29 @@
+{
+  "Parameters" : {
+    "Env": "prod",
+    "ProjectModuleTag": "/vcis/prod/infra/tags/project-module-value-capture-industry-system",
+    "ITSHostedZone": "is.its-plus.com",
+    "ITSHostedZoneId": "Z00748631X7YJQVF6LK57",
+    "SharedDatabaseNonProdRecordSetName": "update-shared-database-np",
+    "SharedDatabaseNonProdReadOnlyRecordSetName": "update-shared-database-ro-np",
+    "MasterdataProdRecordSetName": "update-shared-database",
+    "PodDatabaseNonProdRecordSetName": "update-pod-np",
+    "PodDatabaseProdRecordSetName": "update-pod",
+    "PodDatabaseWriterProdRecordSetName": "update-pod1",
+    "PodDatabaseProdReaderRecordSetName": "update-pod-ro",
+    "PodDatabaseProdReadOnlyRecordSetName": "update-pod-ro1",
+    "ServiceFeeNonProdRecordSetName": "update-service-fee-np",
+    "ServiceFeeProdRecordSetName": "update-service-fee",
+    "PodRedisClusterMasterNonProdRecordSetName": "update-pod-master",
+    "PodRedisClusterReplicaNonProdRecordSetName": "update-pod-replica",
+    "PodRedisClusterMasterProdRecordSetName": "update-pod-master",
+    "PodRedisClusterReplicaProdRecordSetName": "update-pod-replica",
+    "RdsHostedZone": "rds.vcis.internal",
+    "RedisHostedZone": "redis.vcis.internal",
+    "VpcStackNameDEV": "vcis-vpc-dev",
+    "VpcStackNameIT": "vcis-vpc-it",
+    "VpcStackNamePROD": "vcis-vpc-prod",
+    "TtlValue": "300",
+    "HostedZoneStackName": "vcis-route53-hostedzone"
+  }
+}

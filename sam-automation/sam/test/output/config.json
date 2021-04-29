@@ -1,0 +1,212 @@
+{
+  "LATEST": {
+    "TRANSFER_CALCULATE_CREDIT_SQS": "https://sqs.us-east-1.amazonaws.com/820712698669/vcis-app-transfer-calculate-credit",
+    "VC_LEGACY_API": {
+      "host": "https://api.monsanto.com",
+      "partnerSearchPath": "/its/legacy/v1/partner/%s/%s/search?partnerType=GROWER"
+    },
+    "DATASOURCES": {
+      "CREDIT_DB": {
+        "DB_DATABASE": "podcreditprod",
+        "DB_HOST": "sc-350260138091-pp-nf2336htr5yce-databasecluster-1k42vvh3lzwd7.cluster-cn8fbnlhx4nv.us-east-1.rds.amazonaws.com",
+        "DB_PASSWORD": {
+          "__decryptor": "AWS_KMS",
+          "value": "AQICAHgdjYXTAfzYr6x8pHTkvp11SlzPcMRsQzFL2vx7vaVZiQFRKX1TPeuCPXARBGPK0ujdAAAAZzBlBgkqhkiG9w0BBwagWDBWAgEAMFEGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMHDCD/6EKGq+y9MK0AgEQgCQqN78f9MW9zyJK8SafAu6FQU2iNfr7jZUhaWmUWmdJlYcaTpY="
+        },
+        "DB_PORT": "3306",
+        "DB_USER": "podcredituser",
+        "DB_SSL": true
+      },
+      "TRANSFER_DB": {
+        "DB_DATABASE": "podcreditprod",
+        "DB_HOST": "sc-350260138091-pp-nf2336htr5yce-databasecluster-1k42vvh3lzwd7.cluster-cn8fbnlhx4nv.us-east-1.rds.amazonaws.com",
+        "DB_PASSWORD": {
+          "__decryptor": "AWS_KMS",
+          "value": "AQICAHgdjYXTAfzYr6x8pHTkvp11SlzPcMRsQzFL2vx7vaVZiQFRKX1TPeuCPXARBGPK0ujdAAAAZzBlBgkqhkiG9w0BBwagWDBWAgEAMFEGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMHDCD/6EKGq+y9MK0AgEQgCQqN78f9MW9zyJK8SafAu6FQU2iNfr7jZUhaWmUWmdJlYcaTpY="
+        },
+        "DB_PORT": "3306",
+        "DB_USER": "podcredituser",
+        "DB_SSL": true
+      }
+    },
+    "USER_ENDPOINT": "https://api01.agro.services/its/vc-user-info/v1/userInfo",
+    "ENTITLEMENT_ENDPOINT": "https://api01.agro.services/its/vc-entitlements/v1/current",
+    "REGION": "us-east-1",
+    "LOG_GROUP": "brazil-value-capture-lannister",
+    "REDIS_CONFIG": {
+      "REDIS_PORT": "6379",
+      "REDIS_ENDPOINT": "master.pod-brazil-redis.kjimyl.use1.cache.amazonaws.com",
+      "REDIS_SSL": true,
+      "REDIS_PASSWORD": {
+        "__decryptor": "AWS_KMS",
+        "value": "AQICAHgdjYXTAfzYr6x8pHTkvp11SlzPcMRsQzFL2vx7vaVZiQHan4ObeM1nk2N6ZwYcXVjKAAAAbjBsBgkqhkiG9w0BBwagXzBdAgEAMFgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMEFwUa64k6EiMaoLIAgEQgCuXr3DP+p98quaG0mEVdZv7xKgt+kTtOTwRTJ2r/AnpDmcHynXVmD3rm0UA"
+      }
+    }
+  },
+  "PROD": {
+    "TRANSFER_CALCULATE_CREDIT_SQS": "https://sqs.us-east-1.amazonaws.com/820712698669/vcis-app-transfer-calculate-credit",
+    "VC_LEGACY_API": {
+      "host": "https://api.monsanto.com",
+      "partnerSearchPath": "/its/legacy/v1/partner/%s/%s/search?partnerType=GROWER"
+    },
+    "DATASOURCES": {
+      "CREDIT_DB": {
+        "DB_DATABASE": "podcreditprod",
+        "DB_HOST": "sc-350260138091-pp-nf2336htr5yce-databasecluster-1k42vvh3lzwd7.cluster-cn8fbnlhx4nv.us-east-1.rds.amazonaws.com",
+        "DB_PASSWORD": {
+          "__decryptor": "AWS_KMS",
+          "value": "AQICAHgdjYXTAfzYr6x8pHTkvp11SlzPcMRsQzFL2vx7vaVZiQFRKX1TPeuCPXARBGPK0ujdAAAAZzBlBgkqhkiG9w0BBwagWDBWAgEAMFEGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMHDCD/6EKGq+y9MK0AgEQgCQqN78f9MW9zyJK8SafAu6FQU2iNfr7jZUhaWmUWmdJlYcaTpY="
+        },
+        "DB_PORT": "3306",
+        "DB_USER": "podcredituser",
+        "DB_SSL": true
+      },
+      "TRANSFER_DB": {
+        "DB_DATABASE": "podcreditprod",
+        "DB_HOST": "sc-350260138091-pp-nf2336htr5yce-databasecluster-1k42vvh3lzwd7.cluster-cn8fbnlhx4nv.us-east-1.rds.amazonaws.com",
+        "DB_PASSWORD": {
+          "__decryptor": "AWS_KMS",
+          "value": "AQICAHgdjYXTAfzYr6x8pHTkvp11SlzPcMRsQzFL2vx7vaVZiQFRKX1TPeuCPXARBGPK0ujdAAAAZzBlBgkqhkiG9w0BBwagWDBWAgEAMFEGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMHDCD/6EKGq+y9MK0AgEQgCQqN78f9MW9zyJK8SafAu6FQU2iNfr7jZUhaWmUWmdJlYcaTpY="
+        },
+        "DB_PORT": "3306",
+        "DB_USER": "podcredituser",
+        "DB_SSL": true
+      }
+    },
+    "USER_ENDPOINT": "https://api01.agro.services/its/vc-user-info/v1/userInfo",
+    "ENTITLEMENT_ENDPOINT": "https://api01.agro.services/its/vc-entitlements/v1/current",
+    "REGION": "us-east-1",
+    "LOG_GROUP": "brazil-value-capture-lannister",
+    "REDIS_CONFIG": {
+      "REDIS_PORT": "6379",
+      "REDIS_ENDPOINT": "master.pod-brazil-redis.kjimyl.use1.cache.amazonaws.com",
+      "REDIS_SSL": true,
+      "REDIS_PASSWORD": {
+        "__decryptor": "AWS_KMS",
+        "value": "AQICAHgdjYXTAfzYr6x8pHTkvp11SlzPcMRsQzFL2vx7vaVZiQHan4ObeM1nk2N6ZwYcXVjKAAAAbjBsBgkqhkiG9w0BBwagXzBdAgEAMFgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMEFwUa64k6EiMaoLIAgEQgCuXr3DP+p98quaG0mEVdZv7xKgt+kTtOTwRTJ2r/AnpDmcHynXVmD3rm0UA"
+      }
+    }
+  },
+  "TEST": {
+    "TRANSFER_CALCULATE_CREDIT_SQS": "https://sqs.us-east-1.amazonaws.com/578248469025/vcis-app-transfer-calculate-credit-it",
+    "VC_LEGACY_API": {
+      "host": "https://api-t.monsanto.com",
+      "partnerSearchPath": "/vc/test/partner/%s/%s/search?partnerType=GROWER"
+    },
+    "DATASOURCES": {
+      "CREDIT_DB": {
+        "DB_DATABASE": "podcreditit",
+        "DB_HOST": "sc-285453578300-pp-txq2qpv3qzv4i-databasecluster-18yu2o5ocu4nj.cluster-c6ftfip45sqv.us-east-1.rds.amazonaws.com",
+        "DB_PASSWORD": {
+          "__decryptor": "AWS_KMS",
+          "value": "AQICAHjUBtrc+uQOudQ/W6lZHxlq/yR1IOUQ+4mBwUwcTumPEAHt/HCmFdi0JqanlWkpX+8yAAAAbTBrBgkqhkiG9w0BBwagXjBcAgEAMFcGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMUtNW26GF/exiL6RHAgEQgCpEKoqpvsPMysb0J/lkcSVFHPUNgPbvoQG1IDnMimaCMUnJrvqJYirqiCs="
+        },
+        "DB_PORT": "3306",
+        "DB_USER": "valuecapture",
+        "DB_SSL": true
+      },
+      "TRANSFER_DB": {
+        "DB_DATABASE": "podcreditit",
+        "DB_HOST": "sc-285453578300-pp-txq2qpv3qzv4i-databasecluster-18yu2o5ocu4nj.cluster-c6ftfip45sqv.us-east-1.rds.amazonaws.com",
+        "DB_PASSWORD": {
+          "__decryptor": "AWS_KMS",
+          "value": "AQICAHjUBtrc+uQOudQ/W6lZHxlq/yR1IOUQ+4mBwUwcTumPEAHt/HCmFdi0JqanlWkpX+8yAAAAbTBrBgkqhkiG9w0BBwagXjBcAgEAMFcGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMUtNW26GF/exiL6RHAgEQgCpEKoqpvsPMysb0J/lkcSVFHPUNgPbvoQG1IDnMimaCMUnJrvqJYirqiCs="
+        },
+        "DB_PORT": "3306",
+        "DB_USER": "valuecapture",
+        "DB_SSL": true
+      }
+    },
+    "REDIS_CONFIG": {
+      "REDIS_PORT": 6379,
+      "REDIS_ENDPOINT": "master.brazil-pod-redis-v5.fxkixt.use1.cache.amazonaws.com",
+      "REDIS_SSL": true,
+      "REDIS_PASSWORD": {
+        "__decryptor": "AWS_KMS",
+        "value": "AQICAHjUBtrc+uQOudQ/W6lZHxlq/yR1IOUQ+4mBwUwcTumPEAETPr2xIPAhViOyMw7p1wLVAAAAbjBsBgkqhkiG9w0BBwagXzBdAgEAMFgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMPHQT/lopET2Q+k4eAgEQgCsuVmnmmV7Ruov9yAyh0oBr88UboQ3A2tw7s0vkW8FqCGky5YDcwLi7ZnLg"
+      }
+    },
+    "USER_ENDPOINT": "https://api01-np.agro.services/vc-user-info/userInfo",
+    "ENTITLEMENT_ENDPOINT": "https://api01-np.agro.services/vc-entitlements-test/current",
+    "REGION": "us-east-1",
+    "LOG_GROUP": "brazil-value-capture-lannister"
+  },
+  "DEV": {
+    "TRANSFER_CALCULATE_CREDIT_SQS": "https://sqs.us-east-1.amazonaws.com/578248469025/vcis-app-transfer-calculate-credit-dev",
+    "VC_LEGACY_API": {
+      "host": "https://api-t.monsanto.com",
+      "partnerSearchPath": "/vc/dev/partner/%s/%s/search?partnerType=GROWER"
+    },
+    "DATASOURCES": {
+      "CREDIT_DB": {
+        "DB_DATABASE": "podcreditdev",
+        "DB_HOST": "sc-285453578300-pp-txq2qpv3qzv4i-databasecluster-18yu2o5ocu4nj.cluster-c6ftfip45sqv.us-east-1.rds.amazonaws.com",
+        "DB_PASSWORD": {
+          "__decryptor": "AWS_KMS",
+          "value": "AQICAHjUBtrc+uQOudQ/W6lZHxlq/yR1IOUQ+4mBwUwcTumPEAHt/HCmFdi0JqanlWkpX+8yAAAAbTBrBgkqhkiG9w0BBwagXjBcAgEAMFcGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMUtNW26GF/exiL6RHAgEQgCpEKoqpvsPMysb0J/lkcSVFHPUNgPbvoQG1IDnMimaCMUnJrvqJYirqiCs="
+        },
+        "DB_PORT": "3306",
+        "DB_USER": "valuecapture",
+        "DB_SSL": true
+      },
+      "TRANSFER_DB": {
+        "DB_DATABASE": "podcreditdev",
+        "DB_HOST": "sc-285453578300-pp-txq2qpv3qzv4i-databasecluster-18yu2o5ocu4nj.cluster-c6ftfip45sqv.us-east-1.rds.amazonaws.com",
+        "DB_PASSWORD": {
+          "__decryptor": "AWS_KMS",
+          "value": "AQICAHjUBtrc+uQOudQ/W6lZHxlq/yR1IOUQ+4mBwUwcTumPEAHt/HCmFdi0JqanlWkpX+8yAAAAbTBrBgkqhkiG9w0BBwagXjBcAgEAMFcGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMUtNW26GF/exiL6RHAgEQgCpEKoqpvsPMysb0J/lkcSVFHPUNgPbvoQG1IDnMimaCMUnJrvqJYirqiCs="
+        },
+        "DB_PORT": "3306",
+        "DB_USER": "valuecapture",
+        "DB_SSL": true
+      }
+    },
+    "REDIS_CONFIG": {
+      "REDIS_PORT": 6379,
+      "REDIS_ENDPOINT": "master.brazil-pod-redis-v5.fxkixt.use1.cache.amazonaws.com",
+      "REDIS_SSL": true,
+      "REDIS_PASSWORD": {
+        "__decryptor": "AWS_KMS",
+        "value": "AQICAHjUBtrc+uQOudQ/W6lZHxlq/yR1IOUQ+4mBwUwcTumPEAETPr2xIPAhViOyMw7p1wLVAAAAbjBsBgkqhkiG9w0BBwagXzBdAgEAMFgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMPHQT/lopET2Q+k4eAgEQgCsuVmnmmV7Ruov9yAyh0oBr88UboQ3A2tw7s0vkW8FqCGky5YDcwLi7ZnLg"
+      }
+    },
+    "USER_ENDPOINT": "https://api01-np.agro.services/vc-user-info/userInfo",
+    "ENTITLEMENT_ENDPOINT": "https://api01-np.agro.services/vc-entitlements-test/current",
+    "REGION": "us-east-1",
+    "LOG_GROUP": "brazil-value-capture-lannister"
+  },
+  "LOCAL": {
+    "VC_LEGACY_API": {
+      "host": "https://api-t.monsanto.com",
+      "partnerSearchPath": "/vc/dev/partner/%s/%s/search?partnerType=GROWER"
+    },
+    "DATASOURCES": {
+      "CREDIT_DB": {
+        "DB_DATABASE": "podcreditdev",
+        "DB_HOST": "localhost",
+        "DB_PASSWORD": "",
+        "DB_PORT": "9035",
+        "DB_USER": "valuecapture",
+        "DB_SSL": true
+      },
+      "TRANSFER_DB": {
+        "DB_DATABASE": "podcreditdev",
+        "DB_HOST": "localhost",
+        "DB_PASSWORD": "",
+        "DB_PORT": "",
+        "DB_USER": "valuecapture",
+        "DB_SSL": true
+      }
+    },
+    "REDIS_CONFIG": {
+      "REDIS_PORT": 6379,
+      "REDIS_ENDPOINT": "localhost",
+      "REDIS_SSL": true,
+      "REDIS_PASSWORD": ""
+    },
+    "USER_ENDPOINT": "https://api01-np.agro.services/vc/it/pod-public-api/pod/user",
+    "ENTITLEMENT_ENDPOINT": "https://api01-np.agro.services/vc-entitlements-test/current",
+    "REGION": "us-east-1",
+    "LOG_GROUP": "brazil-value-capture-lannister"
+  }
+}
